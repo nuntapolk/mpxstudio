@@ -1,0 +1,188 @@
+{
+  "version": "V2.X B31B2",
+  "app_name": "MPX Studio",
+  "subtitle": "EA PORTFOLIO",
+  "organization": "MPX",
+  "description": "Enterprise Application Portfolio Management",
+  "mpx2": {
+    "_comment": "badge positions สำหรับ MPX 2 view — l=left%, t=top%, w=block-width%, h=block-height%",
+    "badges": [
+      {
+        "grp": "2. Services",
+        "cat": "Customer",
+        "l": 0.0,
+        "t": 0.0,
+        "w": 3.0,
+        "h": 29.1
+      },
+      {
+        "grp": "2. Services",
+        "cat": "Partner",
+        "l": 0.0,
+        "t": 29.1,
+        "w": 3.0,
+        "h": 25.3
+      },
+      {
+        "grp": "2. Services",
+        "cat": "Service",
+        "l": 0.0,
+        "t": 54.4,
+        "w": 3.0,
+        "h": 23.7
+      },
+      {
+        "grp": "2. Services",
+        "cat": "Employee",
+        "l": 0.0,
+        "t": 78.1,
+        "w": 3.0,
+        "h": 17.6
+      },
+      {
+        "grp": "2. Services",
+        "cat": "Channel",
+        "l": 3.2,
+        "t": 0.0,
+        "w": 3.8,
+        "h": 52.8
+      },
+      {
+        "grp": "2. Services",
+        "cat": "Portal & Gateway",
+        "l": 3.2,
+        "t": 52.8,
+        "w": 3.8,
+        "h": 42.9
+      },
+      {
+        "grp": "1. Direction",
+        "cat": "BOD",
+        "l": 27.2,
+        "t": 0.6,
+        "w": 40.3,
+        "h": 5.5
+      },
+      {
+        "grp": "1. Direction",
+        "cat": "Vision, Mission, Strategies",
+        "l": 27.2,
+        "t": 6.4,
+        "w": 40.3,
+        "h": 5.5
+      },
+      {
+        "grp": "1. Direction",
+        "cat": "Goals, Objectives",
+        "l": 27.2,
+        "t": 12.3,
+        "w": 40.3,
+        "h": 6.1
+      },
+      {
+        "grp": "1. Direction",
+        "cat": "Governance Body",
+        "l": 27.2,
+        "t": 18.7,
+        "w": 40.3,
+        "h": 5.5
+      },
+      {
+        "grp": "1. Direction",
+        "cat": "Standard & Policies",
+        "l": 27.2,
+        "t": 24.5,
+        "w": 40.3,
+        "h": 5.5
+      },
+      {
+        "grp": "1. Direction",
+        "cat": "Business Process & Services",
+        "l": 27.2,
+        "t": 30.3,
+        "w": 40.3,
+        "h": 6.1
+      },
+      {
+        "grp": "3. Core Products",
+        "cat": "Organization",
+        "l": 17.3,
+        "t": 37.7,
+        "w": 50.4,
+        "h": 6.4
+      },
+      {
+        "grp": "3. Core Products",
+        "cat": "Corporate & Core System",
+        "l": 17.3,
+        "t": 44.4,
+        "w": 50.4,
+        "h": 8.0
+      },
+      {
+        "grp": "3. Core Products",
+        "cat": "Back Office & Support System",
+        "l": 17.3,
+        "t": 52.7,
+        "w": 50.4,
+        "h": 7.0
+      },
+      {
+        "grp": "4. Support",
+        "cat": "Training & Communication",
+        "l": 17.3,
+        "t": 60.0,
+        "w": 50.4,
+        "h": 7.0
+      },
+      {
+        "grp": "4. Support",
+        "cat": "Corporate Information",
+        "l": 17.3,
+        "t": 67.4,
+        "w": 50.4,
+        "h": 7.0
+      },
+      {
+        "grp": "4. Support",
+        "cat": "Corporate Application & Information Technology",
+        "l": 7.3,
+        "t": 76.0,
+        "w": 63.4,
+        "h": 6.4
+      },
+      {
+        "grp": "",
+        "cat": "Enterprise Information Technology",
+        "l": 0.0,
+        "t": 88.8,
+        "w": 100.0,
+        "h": 7.4
+      },
+      {
+        "grp": "5. Governance",
+        "cat": "Corporate Security & Policy",
+        "l": 76.5,
+        "t": 0.0,
+        "w": 3.8,
+        "h": 88.8
+      },
+      {
+        "grp": "5. Governance",
+        "cat": "Risk & Internal Control",
+        "l": 80.6,
+        "t": 0.0,
+        "w": 5.0,
+        "h": 88.8
+      },
+      {
+        "grp": "5. Governance",
+        "cat": "Law & Compliance",
+        "l": 85.8,
+        "t": 0.0,
+        "w": 4.0,
+        "h": 88.8
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+วาง MPX_Logo.png ไฟล์นี้ไว้ใน folder static/ เดียวกันนี้
