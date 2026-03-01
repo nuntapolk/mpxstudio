@@ -1,5 +1,5 @@
 """
-MPX AppPort EA Portfolio — FastAPI + SQLite Backend for demonstation
+MPX AppPort EA Portfolio — FastAPI + SQLite Backend
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Requirements:  pip install fastapi uvicorn
 
