@@ -1,5 +1,5 @@
 """
-MPX AppPort EA Portfolio — FastAPI + SQLite Backend
+MPX Studio EA Portfolio — FastAPI + SQLite Backend
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Requirements:  pip install fastapi uvicorn
 
@@ -21,17 +21,22 @@ Endpoints:
 """
 
 from __future__ import annotations
-import json, os, sqlite3
+import json, os, sqlite3, uuid, time, hmac, hashlib, base64, secrets
 from contextlib import contextmanager
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timedelta
+from typing import Any, List, Optional
 
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, HTTPException, Request, Depends
+    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import FileResponse, JSONResponse
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
+    try:
+        from starlette.middleware.base import BaseHTTPMiddleware
+    except ImportError:
+        from fastapi.middleware.base import BaseHTTPMiddleware
 except ImportError:
     print("=" * 60)
     print("ERROR: FastAPI not installed.")
@@ -39,13 +44,13 @@ except ImportError:
     print("=" * 60)
     raise SystemExit(1)
 
-# ─── CONFIG — อ่านจาก appport.config.json ────────────────────────────────────
-_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "appport.config.json")
+# ─── CONFIG — อ่านจาก mpx-studio.config.json ────────────────────────────────────
+_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mpx-studio.config.json")
 
 def _load_config() -> dict:
     defaults = {
         "version":      "V001",
-        "app_name":     "MPX AppPort",
+        "app_name":     "MPX Studio",
         "subtitle":     "EA PORTFOLIO",
         "organization": "MPX",
         "description":  "Enterprise Application Portfolio Management",
@@ -58,22 +63,116 @@ def _load_config() -> dict:
         except Exception as e:
             print(f"⚠️  Cannot read config: {e} — using defaults")
     else:
-        print(f"ℹ️  appport.config.json not found — using defaults")
+        print(f"ℹ️  mpx-studio.config.json not found — using defaults")
     return defaults
 
 CFG          = _load_config()
 APP_VERSION  = CFG["version"]
-APP_NAME     = CFG.get("app_name", "MPX AppPort")
+APP_NAME     = CFG.get("app_name", "MPX Studio")
 APP_SUBTITLE = CFG.get("subtitle", "EA PORTFOLIO")
 
-_BASE      = os.path.dirname(os.path.abspath(__file__))
-DB_PATH    = os.path.join(_BASE, "appport.db")
-PORT       = 8000
-STATIC_DIR = os.path.join(_BASE, "static")
+_BASE          = os.path.dirname(os.path.abspath(__file__))
+DB_PATH        = os.path.join(_BASE, "mpx-studio.db")
+AUDIT_DB_PATH  = os.path.join(_BASE, "mpx-studio_audit.db")
+VENDOR_DB_PATH = os.path.join(_BASE, "vendor.db")
+PORT           = 8000
+STATIC_DIR     = os.path.join(_BASE, "static")
+
+
+# ─── AUTH CONFIG ───────────────────────────────────────────────────────────────
+_USERS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.config.json")
+
+def _load_users_config() -> dict:
+    defaults = {"jwt_secret": secrets.token_hex(32), "token_expire_minutes": 480, "users": []}
+    if os.path.exists(_USERS_CONFIG_PATH):
+        try:
+            with open(_USERS_CONFIG_PATH, "r", encoding="utf-8") as f:
+                defaults.update(json.load(f))
+            print(f"✅ Users config loaded ({len(defaults.get('users',[]))} users)")
+        except Exception as e:
+            print(f"⚠️  Cannot read users.config.json: {e}")
+    else:
+        print("ℹ️  users.config.json not found — auth disabled (open access)")
+    return defaults
+
+_UCFG = _load_users_config()
+_AUTH_ENABLED = bool(_UCFG.get("users"))
+
+# ─── Password & JWT helpers (stdlib only — no pip needed) ─────────────────────
+def _verify_password(password: str, hashed: str) -> bool:
+    try:
+        parts = hashed.split("$")
+        if parts[0] == "pbkdf2" and len(parts) == 5:
+            _, algo, iterations, salt_b64, dk_b64 = parts
+            salt = base64.b64decode(salt_b64)
+            dk_stored = base64.b64decode(dk_b64)
+            dk_check = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, int(iterations))
+            return hmac.compare_digest(dk_check, dk_stored)
+        return False
+    except Exception:
+        return False
+
+def _b64url_enc(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+def _b64url_dec(s: str) -> bytes:
+    pad = 4 - len(s) % 4
+    if pad != 4: s += "=" * pad
+    return base64.urlsafe_b64decode(s)
+
+def _create_jwt(payload: dict) -> str:
+    secret = _UCFG.get("jwt_secret", "fallback-secret")
+    expire = _UCFG.get("token_expire_minutes", 480)
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {**payload, "iat": int(time.time()), "exp": int(time.time()) + expire * 60}
+    h = _b64url_enc(json.dumps(header, separators=(",", ":")).encode())
+    p = _b64url_enc(json.dumps(payload, separators=(",", ":")).encode())
+    sig = hmac.new(secret.encode(), f"{h}.{p}".encode(), digestmod=hashlib.sha256).digest()
+    return f"{h}.{p}.{_b64url_enc(sig)}"
+
+def _verify_jwt(token: str) -> dict:
+    secret = _UCFG.get("jwt_secret", "fallback-secret")
+    parts = token.split(".")
+    if len(parts) != 3:
+        raise ValueError("Invalid token format")
+    h, p, sig = parts
+    expected = hmac.new(secret.encode(), f"{h}.{p}".encode(), digestmod=hashlib.sha256).digest()
+    if not hmac.compare_digest(_b64url_dec(sig), expected):
+        raise ValueError("Invalid signature")
+    payload = json.loads(_b64url_dec(p))
+    if payload.get("exp", 0) < time.time():
+        raise ValueError("Token expired")
+    return payload
+
+def _get_user_dict(username: str) -> Optional[dict]:
+    for u in _UCFG.get("users", []):
+        if u["username"] == username and u.get("active", True):
+            return u
+    return None
+
+# ─── FastAPI auth dependency ───────────────────────────────────────────────────
+try:
+    _bearer_scheme = HTTPBearer(auto_error=False)
+except Exception:
+    _bearer_scheme = None
+
+def _require_auth(credentials: Optional[Any] = Depends(_bearer_scheme)):
+    if not _AUTH_ENABLED:
+        return {"sub": "anonymous", "roles": ["admin"], "menus": ["*"]}
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = _verify_jwt(credentials.credentials)
+        return payload
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+# Public paths that skip auth (prefix match)
+_PUBLIC_PATHS = {"/api/auth/login", "/api/auth/refresh", "/docs", "/openapi.json", "/redoc"}
 
 # ─── FASTAPI ───────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title       = f"MPX AppPort EA Portfolio {APP_VERSION}",
+    title       = f"MPX Studio EA Portfolio {APP_VERSION}",
     description = "Enterprise Application Portfolio Management — REST API",
     version     = APP_VERSION,
 )
@@ -84,6 +183,422 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
+# NOTE: OperationLogMiddleware is added after init_audit_db() at the bottom of this file
+
+# ─── AUDIT DATABASE ────────────────────────────────────────────────────────────
+AUDIT_DDL = """
+CREATE TABLE IF NOT EXISTS audit_log (
+    log_id       TEXT PRIMARY KEY,
+    ts           TEXT NOT NULL,
+    category     TEXT NOT NULL,  -- AUDIT | COMPLIANCE | OPERATION
+    event_type   TEXT NOT NULL,
+    severity     TEXT NOT NULL DEFAULT 'INFO',
+    actor_ip     TEXT,
+    resource_id  TEXT,
+    before_state TEXT,
+    after_state  TEXT,
+    risk_flags   TEXT,
+    extra        TEXT,
+    duration_ms  INTEGER,
+    status_code  INTEGER,
+    message      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_audit_ts       ON audit_log(ts);
+CREATE INDEX IF NOT EXISTS idx_audit_category ON audit_log(category);
+CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_log(resource_id);
+"""
+
+AUDIT_RETENTION = {"AUDIT": 3*365, "COMPLIANCE": 5*365, "OPERATION": 90}  # days
+
+@contextmanager
+def get_audit_db():
+    conn = sqlite3.connect(AUDIT_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        yield conn; conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally:
+        conn.close()
+
+def init_audit_db():
+    with get_audit_db() as conn:
+        conn.executescript(AUDIT_DDL)
+    print(f"Audit DB ready: {AUDIT_DB_PATH}")
+
+def _purge_old_logs():
+    """Remove logs beyond retention period."""
+    try:
+        with get_audit_db() as conn:
+            for cat, days in AUDIT_RETENTION.items():
+                cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S")
+                conn.execute("DELETE FROM audit_log WHERE category=? AND ts<?", (cat, cutoff))
+    except Exception as e:
+        print(f"  Log purge error: {e}")
+
+# ─── VENDOR DATABASE ───────────────────────────────────────────────────────────
+VENDOR_DDL = """
+CREATE TABLE IF NOT EXISTS vendors (
+    vendor_id       TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    type            TEXT,
+    tier            TEXT DEFAULT 'Registered',
+    status          TEXT DEFAULT 'Active',
+    specializations TEXT DEFAULT '[]',
+    certifications  TEXT DEFAULT '[]',
+    contact_name    TEXT,
+    contact_email   TEXT,
+    website         TEXT,
+    country         TEXT DEFAULT 'Thailand',
+    nda_signed      INTEGER DEFAULT 0,
+    insurance_amt   INTEGER DEFAULT 0,
+    framework_end   TEXT,
+    risk_rating     TEXT DEFAULT 'Medium',
+    avg_score       REAL DEFAULT 0,
+    notes           TEXT,
+    created_at      TEXT,
+    updated_at      TEXT
+);
+CREATE TABLE IF NOT EXISTS vendor_engagements (
+    engagement_id       TEXT PRIMARY KEY,
+    vendor_id           TEXT NOT NULL,
+    app_id              TEXT,
+    type                TEXT NOT NULL,
+    scope               TEXT,
+    start_date          TEXT,
+    end_date            TEXT,
+    status              TEXT DEFAULT 'Planned',
+    critical            INTEGER DEFAULT 0,
+    high                INTEGER DEFAULT 0,
+    medium              INTEGER DEFAULT 0,
+    low                 INTEGER DEFAULT 0,
+    info_count          INTEGER DEFAULT 0,
+    report_ref          TEXT,
+    remediation_by      TEXT,
+    remediation_status  TEXT DEFAULT 'Open',
+    cost                INTEGER DEFAULT 0,
+    score               INTEGER,
+    notes               TEXT,
+    created_at          TEXT
+);
+CREATE TABLE IF NOT EXISTS vendor_capabilities (
+    cap_id      TEXT PRIMARY KEY,
+    vendor_id   TEXT NOT NULL,
+    capability  TEXT NOT NULL,
+    proficiency INTEGER DEFAULT 3,
+    certified   INTEGER DEFAULT 0,
+    evidence    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_veng_vendor ON vendor_engagements(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_veng_app    ON vendor_engagements(app_id);
+"""
+
+@contextmanager
+def get_vendor_db():
+    conn = sqlite3.connect(VENDOR_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        yield conn; conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally:
+        conn.close()
+
+def init_vendor_db():
+    with get_vendor_db() as conn:
+        conn.executescript(VENDOR_DDL)
+        if conn.execute("SELECT COUNT(*) FROM vendors").fetchone()[0] == 0:
+            _seed_vendors(conn)
+    print(f"Vendor DB ready: {VENDOR_DB_PATH}")
+
+def _vrow(row) -> dict:
+    d = dict(row)
+    for f in ("specializations","certifications"):
+        try: d[f] = json.loads(d.get(f) or "[]")
+        except: d[f] = []
+    for f in ("nda_signed",):
+        if f in d: d[f] = bool(d[f])
+    return d
+
+def _erow(row) -> dict:
+    d = dict(row)
+    for f in ("critical","high","medium","low","info_count","cost","score"):
+        d[f] = d.get(f) or 0
+    return d
+
+def _seed_vendors(conn):
+    today = datetime.now().strftime("%Y-%m-%d")
+    vendors = [
+        ("VEN-001","CyberShield Thailand Ltd.","Pentest","Preferred","Active",
+         json.dumps(["Web App","Mobile","API","Network"]),json.dumps(["CREST","OSCP","CEH","ISO 27001"]),
+         "Apirak Suwan","apirak@cybershield.co.th","www.cybershield.co.th","Thailand",
+         1,5000000,"2026-12-31","Low",8.7,"Preferred pentest vendor — strong web app coverage",today,today),
+        ("VEN-002","SecureCode Asia Co., Ltd.","SAST","Preferred","Active",
+         json.dumps(["SAST","DAST","Code Review","DevSecOps"]),json.dumps(["GWAPT","CISSP","ISO 27001"]),
+         "Nattapat Lertkrai","nattapat@securecode.asia","www.securecode.asia","Thailand",
+         1,3000000,"2026-06-30","Low",8.9,"Specialist in code review & DevSecOps pipeline integration",today,today),
+        ("VEN-003","ThreatHunters Thailand","Red Team","Approved","Active",
+         json.dumps(["Red Team","Social Engineering","Physical Security"]),json.dumps(["CRTO","OSCP","CEH"]),
+         "Weerachai Pongpan","weerachai@threathunters.th","www.threathunters.th","Thailand",
+         1,2000000,"2025-12-31","Medium",7.8,"Good red team capability — recommend for annual exercise",today,today),
+        ("VEN-004","ComplianceFirst Advisory","Compliance Audit","Approved","Active",
+         json.dumps(["ISO 27001","PDPA","PCI DSS","Gap Analysis"]),json.dumps(["CISA","CRISC","ISO 27001 Lead Auditor"]),
+         "Sunisa Charoenphol","sunisa@compliancefirst.co.th","www.compliancefirst.co.th","Thailand",
+         1,2000000,"2026-03-31","Low",8.2,"Strong PDPA and ISO 27001 expertise",today,today),
+        ("VEN-005","NetDefense Solutions","VA","Approved","Active",
+         json.dumps(["Vulnerability Assessment","Network Security","Infrastructure"]),json.dumps(["CEH","CompTIA Security+","CISSP"]),
+         "Prasit Wannakarn","prasit@netdefense.co.th","www.netdefense.co.th","Thailand",
+         1,1500000,"2025-09-30","Medium",7.5,"Reliable for routine VA — consider Preferred upgrade after next engagement",today,today),
+        ("VEN-006","CloudSec Partners Ltd.","Cloud Security","Registered","Active",
+         json.dumps(["Cloud Security","Azure","AWS","Container Security"]),json.dumps(["AWS Security Specialty","AZ-500","CKS"]),
+         "Thanawut Siriporn","thanawut@cloudsec.co.th","www.cloudsec.co.th","Thailand",
+         0,0,None,"Medium",0,"New vendor — under evaluation for cloud security engagements",today,today),
+    ]
+    conn.executemany("""INSERT OR IGNORE INTO vendors VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", vendors)
+
+    caps = [
+        ("CAP-001","VEN-001","pentest_web",5,1,"CREST Registered Tester"),
+        ("CAP-002","VEN-001","pentest_mobile",4,1,"CREST Registered"),
+        ("CAP-003","VEN-001","pentest_api",5,1,"CREST Registered Tester"),
+        ("CAP-004","VEN-001","pentest_network",4,1,"CEH Certified"),
+        ("CAP-005","VEN-001","VA_external",4,1,"CEH Certified"),
+        ("CAP-006","VEN-002","SAST",5,1,"GWAPT Certified"),
+        ("CAP-007","VEN-002","DAST",5,1,"GWAPT Certified"),
+        ("CAP-008","VEN-002","code_review",5,1,"CISSP"),
+        ("CAP-009","VEN-002","pentest_web",4,1,"GWAPT"),
+        ("CAP-010","VEN-003","red_team",5,1,"CRTO Certified"),
+        ("CAP-011","VEN-003","social_eng",4,1,"CRTO"),
+        ("CAP-012","VEN-003","pentest_web",3,1,"OSCP"),
+        ("CAP-013","VEN-003","pentest_network",4,1,"OSCP"),
+        ("CAP-014","VEN-004","compliance_iso27001",5,1,"ISO 27001 Lead Auditor"),
+        ("CAP-015","VEN-004","compliance_pdpa",5,1,"CISA"),
+        ("CAP-016","VEN-004","compliance_pci",4,1,"CISA"),
+        ("CAP-017","VEN-004","VA_internal",3,0,"Internal assessment only"),
+        ("CAP-018","VEN-005","VA_external",4,1,"CEH"),
+        ("CAP-019","VEN-005","VA_internal",5,1,"CEH"),
+        ("CAP-020","VEN-005","pentest_network",3,1,"CompTIA Security+"),
+        ("CAP-021","VEN-006","cloud_security",5,1,"AWS Security Specialty"),
+        ("CAP-022","VEN-006","pentest_web",3,0,"Under evaluation"),
+        ("CAP-023","VEN-006","container_security",4,1,"CKS"),
+    ]
+    conn.executemany("INSERT OR IGNORE INTO vendor_capabilities VALUES (?,?,?,?,?,?)", caps)
+
+    engagements = [
+        # ── ENG-001 to ENG-011 : original seed ──────────────────────────────────
+        ("ENG-001","VEN-001","APP-001","Pentest","Web App Pentest — SAP Fiori UI & API","2024-09-01","2024-09-15","Completed",0,2,5,8,3,"RPT-2024-001","2024-11-30","Closed",250000,9,"All findings closed.",today),
+        ("ENG-002","VEN-005","APP-002","VA","External VA — Salesforce integration endpoints","2024-10-01","2024-10-07","Completed",0,1,3,6,4,"RPT-2024-002","2024-12-15","In Progress",80000,8,"1 High (OAuth config) still in remediation",today),
+        ("ENG-003","VEN-001","APP-002","Pentest","API Security Testing — Salesforce REST & Apex","2025-02-01","2025-02-14","In Progress",0,0,0,0,0,None,None,"Open",200000,None,"Currently in testing phase",today),
+        ("ENG-004","VEN-001","APP-003","Pentest","AS/400 Security Assessment — Network + App layer","2023-06-01","2023-06-21","Completed",1,4,9,12,5,"RPT-2023-001","2023-09-30","In Progress",350000,8,"Critical: unpatched RPC. Remediation open due to legacy constraints.",today),
+        ("ENG-005","VEN-004","APP-004","Compliance Audit","PDPA Gap Analysis — HR data processing & retention","2024-11-01","2024-11-15","Completed",0,0,2,4,6,"RPT-2024-003","2025-03-31","In Progress",120000,8,"2 Gaps: consent mgmt & data retention policy",today),
+        ("ENG-006","VEN-002","APP-005","SAST","Source Code Review — Python ML pipeline & REST API","2024-12-01","2024-12-10","Completed",0,1,4,7,10,"RPT-2024-004","2025-02-28","In Progress",150000,9,"High: SQL injection in analytics query builder",today),
+        ("ENG-007","VEN-003","APP-007","Red Team","K8s Cluster — Container escape, privilege escalation","2024-08-01","2024-08-21","Completed",1,3,7,5,2,"RPT-2024-005","2024-10-31","Closed",400000,8,"Critical: container escape via privileged pod. All closed.",today),
+        ("ENG-008","VEN-005","APP-009","VA","Internal VA — SAP SCM integration servers","2025-01-15","2025-01-20","Completed",0,2,4,5,3,"RPT-2025-001","2025-03-31","Open",70000,7,"2 High: unpatched middleware",today),
+        ("ENG-009","VEN-001","APP-010","Pentest","Full-stack Web Pentest — Customer Portal React/Node","2024-11-15","2024-11-30","Completed",0,3,6,9,4,"RPT-2024-006","2025-01-31","In Progress",220000,9,"High: IDOR, XSS, Missing auth on API",today),
+        ("ENG-010","VEN-002","APP-010","DAST","DAST — Production-like environment","2025-03-01","2025-03-07","Planned",0,0,0,0,0,None,None,"Open",130000,None,"Scheduled Q1 2025",today),
+        ("ENG-011","VEN-004",None,"Compliance Audit","Org-wide ISO 27001:2022 Gap Assessment","2025-02-01","2025-02-28","In Progress",0,0,0,0,0,None,None,"Open",500000,None,"Annual ISO 27001 surveillance audit",today),
+        # ── ENG-012 : APP-014 MES Factory v1 (Mission Critical) ─────────────────
+        ("ENG-012","VEN-001","APP-014","Pentest","OT/SCADA Interface Pentest — MES APIs & PLC Connectivity","2023-05-01","2023-05-21","Completed",1,3,7,10,2,"RPT-2023-002","2023-09-30","In Progress",300000,8,"Critical: Unauthenticated PLC access via legacy Modbus. Partial remediation — upgrade in progress.",today),
+        # ── ENG-013/014 : APP-015 Treasury System (Mission Critical, PI_SPI) ────
+        ("ENG-013","VEN-004","APP-015","Compliance Audit","PDPA + Internal Control Audit — Treasury PI/SPI Data Handling","2024-06-01","2024-06-15","Completed",0,1,3,4,5,"RPT-2024-007","2024-09-30","In Progress",180000,8,"High: Missing data masking for counterparty PII in treasury reports. Remediation ongoing.",today),
+        ("ENG-014","VEN-001","APP-015","Pentest","Treasury Web Pentest — Bloomberg/Reuters API & Dealing UI","2024-08-01","2024-08-15","Completed",0,2,4,6,3,"RPT-2024-008","2024-11-30","Closed",280000,9,"All findings remediated. Next pentest recommended Aug 2025.",today),
+        # ── ENG-015/016 : APP-016 Identity Platform (Mission Critical, PI_SPI) ──
+        ("ENG-015","VEN-002","APP-016","SAST","SAST — Identity Provider code (OAuth, SAML, MFA modules)","2024-07-01","2024-07-21","Completed",0,2,6,8,12,"RPT-2024-009","2024-10-31","In Progress",200000,8,"High: PKCE bypass, JWT signing weakness. 1 High open — patch pending vendor release.",today),
+        ("ENG-016","VEN-001","APP-016","Pentest","Pentest — SSO/MFA flows, SAML assertion, LDAP injection","2025-01-15","2025-01-29","Completed",0,1,3,5,4,"RPT-2025-002","2025-03-31","In Progress",260000,9,"1 High open: SAML response signature bypass on legacy SP configuration.",today),
+        # ── ENG-017/018 : APP-020 API Gateway (Mission Critical) ─────────────────
+        ("ENG-017","VEN-005","APP-020","VA","External VA — API Gateway Kong instances & management plane","2024-09-01","2024-09-07","Completed",0,2,5,7,3,"RPT-2024-010","2024-11-30","Closed",90000,8,"All findings remediated. Clean posture after hardening.",today),
+        ("ENG-018","VEN-001","APP-020","Pentest","API Gateway Security Pentest — Auth bypass, rate limit, plugin security","2025-02-10","2025-02-24","In Progress",0,0,0,0,0,None,None,"Open",230000,None,"In progress — preliminary findings expected end of February.",today),
+        # ── ENG-019/020 : APP-022 e-Commerce (Mission Critical, PI_SPI) ──────────
+        ("ENG-019","VEN-001","APP-022","Pentest","e-Commerce Full Pentest — Payment flow, cart, auth, PCI scope","2024-10-01","2024-10-21","Completed",0,4,8,11,5,"RPT-2024-011","2025-01-15","In Progress",320000,9,"High: IDOR in order API, unencrypted card preview in dev-mode endpoint.",today),
+        ("ENG-020","VEN-004","APP-022","Compliance Audit","PCI DSS v4 Readiness Assessment — SAQ D scope","2024-11-15","2024-11-30","Completed",0,2,4,5,8,"RPT-2024-012","2025-03-31","In Progress",250000,8,"2 High gaps: P2PE not fully implemented, annual pentest frequency non-compliant.",today),
+        # ── ENG-021/022 : APP-027 Network IPAM (Mission Critical) ────────────────
+        ("ENG-021","VEN-005","APP-027","VA","VA — IPAM/DNS infrastructure & Infoblox appliances","2023-11-01","2023-11-07","Completed",0,1,3,5,2,"RPT-2023-003","2024-02-28","Closed",70000,7,"All findings closed. Last VA >12 months ago — reschedule overdue.",today),
+        ("ENG-022","VEN-005","APP-027","VA","VA Round 2 — IPAM v2 post-upgrade config & DNS security hardening","2025-01-20","2025-01-25","Completed",0,1,2,4,3,"RPT-2025-003","2025-03-31","In Progress",75000,8,"1 High: Default SNMP community string on 3 core nodes. Awaiting config change window.",today),
+        # ── ENG-023 : APP-029 ServiceMesh Istio (Mission Critical) ───────────────
+        ("ENG-023","VEN-001","APP-029","Pentest","Service Mesh Security — Istio mTLS bypass, sidecar escape, RBAC","2024-07-01","2024-07-15","Completed",1,2,5,6,3,"RPT-2024-013","2024-10-31","In Progress",290000,8,"Critical: mTLS policy gap on legacy service path allows unencrypted traffic. In remediation.",today),
+        # ── ENG-024 : APP-032 Cyber SIEM (Mission Critical) ──────────────────────
+        ("ENG-024","VEN-003","APP-032","Red Team","Red Team — SIEM Platform attack simulation & log manipulation","2024-05-01","2024-05-28","Completed",0,1,4,3,5,"RPT-2024-014","2024-08-31","Closed",380000,8,"High: Log injection via crafted HTTP headers. All findings closed.",today),
+        # ── ENG-025 : APP-045 Monitoring Observability (Mission Critical) ─────────
+        ("ENG-025","VEN-005","APP-045","VA","Infrastructure VA — Prometheus/Grafana/Alertmanager stack","2024-12-01","2024-12-07","Completed",0,2,3,5,4,"RPT-2024-015","2025-02-28","In Progress",80000,7,"2 High: Unauthenticated Prometheus metrics endpoint in DMZ, no mTLS on federation endpoint.",today),
+        # ── ENG-026/027 : APP-048 Fraud Detection AI (Mission Critical, PI_SPI) ──
+        ("ENG-026","VEN-002","APP-048","SAST","SAST — Fraud ML model serving code & feature pipeline","2024-09-15","2024-09-30","Completed",0,1,5,7,9,"RPT-2024-016","2024-12-31","Closed",170000,9,"All findings closed. Excellent code quality overall.",today),
+        ("ENG-027","VEN-001","APP-048","Pentest","Fraud API Pentest — Model inference endpoint, admin panel & PI data","2025-02-15","2025-02-28","Planned",0,0,0,0,0,None,None,"Open",250000,None,"Scheduled Feb 2025 — covers PI/SPI data in fraud signals and model API surface.",today),
+        # ── ENG-028 : APP-057 Splunk SIEM (Mission Critical) ─────────────────────
+        ("ENG-028","VEN-003","APP-057","Red Team","Splunk Security Assessment — Log tampering, admin bypass, SPL injection","2023-09-01","2023-09-21","Completed",0,2,4,3,2,"RPT-2023-004","2023-12-31","Closed",350000,7,"All findings closed. Assessment >24 months ago — urgent rescheduling required.",today),
+        # ── ENG-029/030 : APP-058 Mulesoft ESB (Mission Critical) ─────────────────
+        ("ENG-029","VEN-005","APP-058","VA","ESB Infrastructure VA — Mulesoft CloudHub runtime & API Manager","2024-11-01","2024-11-07","Completed",0,2,4,6,3,"RPT-2024-017","2025-02-28","In Progress",90000,7,"High: Exposed management API without IP allowlist. Remediation in progress.",today),
+        ("ENG-030","VEN-002","APP-058","SAST","SAST — Mulesoft custom connector & transformation scripts","2025-01-05","2025-01-15","Completed",0,1,3,5,6,"RPT-2025-004","2025-03-31","In Progress",140000,8,"1 High: Hardcoded credential in legacy SFTP connector script. Ticket raised.",today),
+        # ── ENG-031 : APP-065 PingFederate IAM (Mission Critical) ────────────────
+        ("ENG-031","VEN-001","APP-065","Pentest","PingFederate IAM Pentest — OIDC, OAuth2, SAML & admin console","2024-06-01","2024-06-15","Completed",0,3,6,8,4,"RPT-2024-018","2024-09-30","Closed",270000,9,"All findings remediated. Strong overall IAM posture.",today),
+        # ── ENG-032/033 : APP-072 OpenShift Platform (Mission Critical) ──────────
+        ("ENG-032","VEN-001","APP-072","Pentest","OpenShift Platform Pentest — Cluster API, RBAC, namespace isolation","2024-11-01","2024-11-21","Completed",1,3,7,9,3,"RPT-2024-019","2025-02-28","In Progress",340000,8,"Critical: Overprivileged service account allowing cross-namespace secret access. Patch in review.",today),
+        ("ENG-033","VEN-006","APP-072","Cloud Security","Cloud Security Review — OpenShift on Azure — network policies, RBAC posture","2025-02-01","2025-02-14","In Progress",0,0,0,0,0,None,None,"Open",200000,None,"In progress — cloud config review combined with ENG-032 pentest findings remediation tracking.",today),
+        # ── ENG-034/035 : APP-073 Guidewire Claims (Mission Critical, PI_SPI) ────
+        ("ENG-034","VEN-004","APP-073","Compliance Audit","PDPA Data Mapping — Guidewire Claims PI/SPI data flows","2024-08-01","2024-08-15","Completed",0,1,3,4,7,"RPT-2024-020","2024-11-30","Closed",160000,8,"All PDPA gaps closed. Next audit due Aug 2025.",today),
+        ("ENG-035","VEN-001","APP-073","Pentest","Guidewire Claims Portal Pentest — Agent portal & PI data access control","2025-01-01","2025-01-15","Completed",0,2,5,7,4,"RPT-2025-005","2025-03-31","In Progress",300000,9,"High: Broken access control allows cross-customer claim data view. Fix in staging.",today),
+        # ── ENG-036/037 : APP-075 SWIFT Gateway (Mission Critical, PI_SPI) ───────
+        ("ENG-036","VEN-001","APP-075","Pentest","SWIFT CSP Pentest — HSM, SWIFT messaging & operator workstations","2024-09-01","2024-09-21","Completed",0,2,4,5,2,"RPT-2024-021","2024-12-31","In Progress",380000,9,"High: Missing MFA on SWIFT operator account. Awaiting token deployment.",today),
+        ("ENG-037","VEN-004","APP-075","Compliance Audit","SWIFT CSP v2024 Controls Compliance Assessment","2024-10-01","2024-10-15","Completed",0,1,2,3,4,"RPT-2024-022","2025-01-31","In Progress",220000,8,"1 High gap: Secure zone boundary control partial compliance. Architecture change planned.",today),
+        # ── ENG-038/039 : APP-080 IBM MQ Messaging (Mission Critical) ────────────
+        ("ENG-038","VEN-005","APP-080","VA","IBM MQ VA — Queue manager config, channel auth & TLS settings","2023-08-01","2023-08-07","Completed",0,2,3,5,2,"RPT-2023-005","2023-11-30","Closed",75000,7,"All findings closed. Assessment >24 months ago — critical coverage gap, reschedule urgent.",today),
+        ("ENG-039","VEN-005","APP-080","VA","IBM MQ VA Round 2 — Post-upgrade config hardening verification","2025-01-10","2025-01-15","Completed",0,1,2,3,2,"RPT-2025-006","2025-03-31","Open",78000,8,"1 High: Unencrypted channel on legacy mainframe connection still active.",today),
+        # ── ENG-040/041 : APP-082 Kafka Event Bus (Mission Critical) ─────────────
+        ("ENG-040","VEN-002","APP-082","SAST","Kafka Consumer/Producer Code Review — Auth, encryption, schema validation","2024-10-01","2024-10-15","Completed",0,1,4,6,5,"RPT-2024-023","2025-01-15","Closed",150000,8,"All findings closed. 1 High was hardcoded SASL password in consumer — removed.",today),
+        ("ENG-041","VEN-001","APP-082","Pentest","Kafka Security Pentest — ZooKeeper exposure, ACL bypass, topic auth","2025-02-01","2025-02-15","In Progress",0,0,0,0,0,None,None,"Open",240000,None,"In progress — ZooKeeper access control and topic ACL testing underway.",today),
+        # ── ENG-042/043 : APP-086 COBOL Payroll (Mission Critical, PI_SPI) ───────
+        ("ENG-042","VEN-004","APP-086","Compliance Audit","Payroll PI/SPI Compliance Audit — PDPA, data retention & COBOL I/O","2024-04-01","2024-04-15","Completed",0,2,5,6,4,"RPT-2024-024","2024-07-31","In Progress",200000,7,"2 High gaps: excessive data retention (>7yr), no PI masking in batch output logs.",today),
+        ("ENG-043","VEN-001","APP-086","Pentest","COBOL Payroll Infrastructure Pentest — Mainframe, RACF, JCL security","2023-03-01","2023-03-21","Completed",1,3,6,8,3,"RPT-2023-006","2023-07-31","In Progress",320000,7,"Critical: Weak RACF password policy. Legacy constraints — partial remediation only. Reschedule planned.",today),
+        # ── ENG-044/045 : APP-087 Cybersource Payment (Mission Critical, PI_SPI) ─
+        ("ENG-044","VEN-001","APP-087","Pentest","Payment Gateway Pentest — PCI CDE scope, card data environment","2024-11-01","2024-11-15","Completed",0,1,3,5,3,"RPT-2024-025","2025-02-28","In Progress",300000,9,"High: TLS 1.0 still enabled on legacy processor connection. Change window scheduled.",today),
+        ("ENG-045","VEN-004","APP-087","Compliance Audit","PCI DSS v4 Full Audit — Cybersource CDE scope","2024-12-01","2024-12-15","Completed",0,2,3,4,6,"RPT-2024-026","2025-04-30","In Progress",350000,8,"2 High gaps in SAQ D: monitoring continuity gap, key rotation policy non-compliant.",today),
+        # ── ENG-046/047 : APP-088 SAS Risk Engine (Mission Critical, PI_SPI) ─────
+        ("ENG-046","VEN-002","APP-088","SAST","SAS Risk Model Code Review — SAS macros, data inputs & output masking","2024-07-01","2024-07-15","Completed",0,1,4,5,7,"RPT-2024-027","2024-10-31","Closed",160000,8,"All findings closed. Good overall code quality.",today),
+        ("ENG-047","VEN-004","APP-088","Compliance Audit","Risk Data Governance Audit — PDPA & BCBS 239 data lineage alignment","2025-01-15","2025-02-14","In Progress",0,0,0,0,0,None,None,"Open",250000,None,"Ongoing — BCBS 239 data lineage documentation and PI classification under review.",today),
+        # ── ENG-048 : APP-090 Hashicorp Vault (Mission Critical) ─────────────────
+        ("ENG-048","VEN-001","APP-090","Pentest","Vault PKI & Secret Store Pentest — Token auth, policy bypass & HA failover","2024-10-15","2024-10-29","Completed",0,2,5,6,3,"RPT-2024-028","2025-01-31","In Progress",260000,9,"High: Vault audit log disabled on DR cluster. Auth method bypass PoC submitted.",today),
+        # ── ENG-049 : APP-006 Legacy ERP Oracle (High, PI_SPI) ───────────────────
+        ("ENG-049","VEN-002","APP-006","SAST","Oracle EBS Custom Code Review — PL/SQL, Forms & Reports","2023-04-01","2023-04-21","Completed",0,3,7,9,4,"RPT-2023-007","2023-08-31","In Progress",200000,7,"3 High open: SQL injection in custom Forms modules. Legacy system — patching requires upgrade.",today),
+        # ── ENG-050 : APP-008 Data Warehouse v2 (High) ───────────────────────────
+        ("ENG-050","VEN-005","APP-008","VA","VA — Snowflake/Teradata DW infrastructure & BI tool connectivity","2024-06-01","2024-06-07","Completed",0,1,3,5,4,"RPT-2024-029","2024-09-30","Closed",85000,8,"All findings closed. Clean posture after hardening.",today),
+        # ── ENG-051 : APP-021 Legacy Payroll RPG (High, PI_SPI) ──────────────────
+        ("ENG-051","VEN-004","APP-021","Compliance Audit","PDPA Assessment — AS/400 RPG Payroll PI data handling & batch logs","2024-03-01","2024-03-15","Completed",0,2,4,5,3,"RPT-2024-030","2024-07-31","In Progress",150000,7,"2 High: no DSAR process, PI in batch logs retained >5yr without masking.",today),
+        # ── ENG-052 : APP-023 Risk Mgmt System (High, PI_SPI) ────────────────────
+        ("ENG-052","VEN-001","APP-023","Pentest","Risk Management Portal Pentest — Internal web app & PI data access","2024-05-01","2024-05-15","Completed",0,2,4,6,3,"RPT-2024-031","2024-08-31","Closed",220000,8,"All findings closed.",today),
+        # ── ENG-053 : APP-017 ITSM ServiceNow (High) ─────────────────────────────
+        ("ENG-053","VEN-005","APP-017","VA","ServiceNow VA — Integration Hub, MID server & REST API endpoints","2024-08-01","2024-08-07","Completed",0,1,2,4,3,"RPT-2024-032","2024-11-30","Closed",80000,8,"All findings closed.",today),
+        # ── ENG-054 : APP-036 Compliance GRC (High, PI_SPI) ──────────────────────
+        ("ENG-054","VEN-004","APP-036","Compliance Audit","GRC Tool PDPA + ISO 27001 Data Classification Audit","2024-09-01","2024-09-15","Completed",0,0,3,4,5,"RPT-2024-033","2024-12-31","Closed",130000,9,"All findings closed. Excellent compliance posture.",today),
+        # ── ENG-055 : APP-098 GitLab DevSecOps (High) ────────────────────────────
+        ("ENG-055","VEN-002","APP-098","SAST","GitLab CI/CD Pipeline SAST — Secret scanning, SBOM & IaC analysis","2025-01-20","2025-01-31","Completed",0,1,3,4,6,"RPT-2025-007","2025-03-31","In Progress",160000,8,"High: Hardcoded AWS key in 3 old pipeline scripts. Purge and key rotation in progress.",today),
+        # ── ENG-056 : APP-043 CDP Customer Data (High, PI_SPI) ───────────────────
+        ("ENG-056","VEN-004","APP-043","Compliance Audit","CDP PDPA Consent & PI Flow Audit — Segment & CDP pipelines","2024-12-15","2025-01-15","In Progress",0,0,0,0,0,None,None,"Open",200000,None,"In progress — consent management workflow mapping and gap analysis underway.",today),
+        # ── ENG-057 : APP-007 K8s Platform — Cloud follow-up (Mission Critical) ──
+        ("ENG-057","VEN-006","APP-007","Cloud Security","K8s Cloud Security Posture — Azure AKS config, admission control, RBAC","2025-02-15","2025-02-28","Planned",0,0,0,0,0,None,None,"Open",180000,None,"Planned — follow-up cloud review to ENG-007 red team findings on AKS node config.",today),
+        # ── ENG-058 : APP-029 ServiceMesh — Cloud follow-up (Mission Critical) ───
+        ("ENG-058","VEN-006","APP-029","Cloud Security","Cloud Security Review — Istio Ambient mesh migration security assessment","2025-03-01","2025-03-21","Planned",0,0,0,0,0,None,None,"Open",220000,None,"Planned Q1 2025 — covers ambient mesh migration risks and eBPF dataplane security.",today),
+        # ── ENG-059 : APP-033 Finance Close (High, PI_SPI) ───────────────────────
+        ("ENG-059","VEN-004","APP-033","Compliance Audit","Finance Close PI Audit — Journal entry masking & period-end controls","2024-01-15","2024-01-31","Completed",0,1,2,3,4,"RPT-2024-034","2024-04-30","In Progress",140000,8,"1 High open: period-end journal entry access not properly segregated by role.",today),
+        # ── ENG-060 : APP-022 e-Commerce Mobile (Mission Critical, PI_SPI) ────────
+        ("ENG-060","VEN-001","APP-022","Pentest","e-Commerce Mobile App Pentest — iOS, Android & React Native BFF API","2025-02-20","2025-03-07","Planned",0,0,0,0,0,None,None,"Open",280000,None,"Planned — covers iOS, Android apps and Backend-for-Frontend API layer.",today),
+        # ── ENG-061 : APP-085 Genesys Cloud CX (High, PI_SPI) ────────────────────
+        ("ENG-061","VEN-004","APP-085","Compliance Audit","Genesys PDPA Audit — Call recording, voice PI retention & consent","2024-10-15","2024-10-31","Completed",0,1,2,4,5,"RPT-2024-035","2025-01-31","In Progress",160000,8,"High: Voice recordings retained beyond PDPA-allowed period. Retention policy update in progress.",today),
+        # ── ENG-062 : APP-099 Archer Risk Platform (High, PI_SPI) ────────────────
+        ("ENG-062","VEN-004","APP-099","Compliance Audit","Archer GRC Platform Audit — Risk register PI & GRC data governance","2024-11-01","2024-11-15","Completed",0,0,2,3,4,"RPT-2024-036","2025-02-28","Closed",130000,9,"All findings closed.",today),
+    ]
+    conn.executemany("INSERT OR IGNORE INTO vendor_engagements VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", engagements)
+    print(f"  Seeded {len(vendors)} vendors, {len(caps)} capabilities, {len(engagements)} engagements")
+
+# ─── VENDOR MODELS ─────────────────────────────────────────────────────────────
+class VendorWrite(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    tier: Optional[str] = None
+    status: Optional[str] = None
+    specializations: Optional[List[str]] = None
+    certifications: Optional[List[str]] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    website: Optional[str] = None
+    country: Optional[str] = None
+    nda_signed: Optional[bool] = None
+    insurance_amt: Optional[int] = None
+    framework_end: Optional[str] = None
+    risk_rating: Optional[str] = None
+    notes: Optional[str] = None
+
+class EngagementWrite(BaseModel):
+    vendor_id: Optional[str] = None
+    app_id: Optional[str] = None
+    type: Optional[str] = None
+    scope: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    status: Optional[str] = None
+    critical: Optional[int] = None
+    high: Optional[int] = None
+    medium: Optional[int] = None
+    low: Optional[int] = None
+    info_count: Optional[int] = None
+    report_ref: Optional[str] = None
+    remediation_by: Optional[str] = None
+    remediation_status: Optional[str] = None
+    cost: Optional[int] = None
+    score: Optional[int] = None
+    notes: Optional[str] = None
+
+def write_log(category: str, event_type: str, severity: str = "INFO",
+              actor_ip: str = None, resource_id: str = None,
+              before_state: dict = None, after_state: dict = None,
+              risk_flags: list = None, extra: dict = None,
+              duration_ms: int = None, status_code: int = None,
+              message: str = None):
+    """Non-blocking write to audit_log table."""
+    try:
+        with get_audit_db() as conn:
+            conn.execute("""INSERT INTO audit_log VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                str(uuid.uuid4()),
+                datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                category, event_type, severity,
+                actor_ip, resource_id,
+                json.dumps(before_state, ensure_ascii=False) if before_state else None,
+                json.dumps(after_state,  ensure_ascii=False) if after_state  else None,
+                json.dumps(risk_flags,   ensure_ascii=False) if risk_flags   else None,
+                json.dumps(extra,        ensure_ascii=False) if extra        else None,
+                duration_ms, status_code, message
+            ))
+    except Exception as e:
+        print(f"  write_log error: {e}")
+
+def _diff_fields(before: dict, after: dict) -> dict:
+    """Return only changed fields as {field: [old, new]}."""
+    diff = {}
+    for k in set(list(before.keys()) + list(after.keys())):
+        v_old = before.get(k); v_new = after.get(k)
+        if v_old != v_new:
+            diff[k] = [v_old, v_new]
+    return diff
+
+def _detect_risks(before: dict, after: dict, body_dict: dict = None) -> list:
+    """Detect high-risk changes and return list of flag strings."""
+    flags = []
+    # PI/SPI export or enable
+    if after.get("pi_spi") and not (before or {}).get("pi_spi"):
+        flags.append("PI_SPI_ENABLED")
+    # DR policy change
+    if "dr" in (body_dict or {}) and before and str(before.get("dr")) != str(after.get("dr")):
+        flags.append("DR_POLICY_CHANGED")
+    # Compliance change
+    if "compliance" in (body_dict or {}) and before and before.get("compliance") != after.get("compliance"):
+        flags.append("COMPLIANCE_CHANGED")
+    # Criticality upgrade
+    crit_order = {"Low":0, "Medium":1, "High":2, "Mission Critical":3}
+    if before and crit_order.get(after.get("criticality",""),0) > crit_order.get(before.get("criticality",""),0):
+        flags.append("CRITICALITY_UPGRADED")
+    return flags
+
+# ─── OPERATION LOG MIDDLEWARE ──────────────────────────────────────────────────
+class OperationLogMiddleware(BaseHTTPMiddleware):
+    SKIP_PREFIXES = ("/assets/", "/docs", "/openapi", "/redoc")
+
+    async def dispatch(self, request: Request, call_next):
+        start = time.monotonic()
+        response = await call_next(request)
+        dur_ms = int((time.monotonic() - start) * 1000)
+
+        path = request.url.path
+        if not any(path.startswith(p) for p in self.SKIP_PREFIXES) and path.startswith("/api/"):
+            sev = "ERROR" if response.status_code >= 500 else ("WARNING" if response.status_code >= 400 else "INFO")
+            write_log(
+                category="OPERATION",
+                event_type=f"{request.method} {path}",
+                severity=sev,
+                actor_ip=request.client.host if request.client else None,
+                duration_ms=dur_ms,
+                status_code=response.status_code,
+                message=f"{request.method} {path} → {response.status_code} ({dur_ms}ms)"
+            )
+        return response
 
 # ─── DATABASE ──────────────────────────────────────────────────────────────────
 @contextmanager
@@ -227,7 +742,7 @@ def next_id(conn) -> str:
 
 # ─── ROUTES ────────────────────────────────────────────────────────────────────
 @app.get("/api/version")
-def r_version():
+def r_version(current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
         row = conn.execute("SELECT value FROM config WHERE key='app_version'").fetchone()
     ver = row["value"] if row else APP_VERSION
@@ -241,18 +756,18 @@ def r_version():
     }
 
 @app.get("/api/config")
-def get_config():
-    """Return full appport.config.json (re-read each time so hot-editable)."""
+def get_config(current_user: dict = Depends(_require_auth)):
+    """Return full mpx-studio.config.json (re-read each time so hot-editable)."""
     return _load_config()
 
 @app.get("/api/config/mpx2/badges")
-def get_mpx2_badges():
+def get_mpx2_badges(current_user: dict = Depends(_require_auth)):
     """Return MPX2 badge positions from config."""
     cfg = _load_config()
     return {"badges": cfg.get("mpx2", {}).get("badges", [])}
 
 @app.get("/api/stats")
-def r_stats():
+def r_stats(current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
         q = lambda s: conn.execute(s).fetchone()[0]
         return {
@@ -268,7 +783,7 @@ def r_stats():
 @app.get("/api/apps")
 def r_list(status: Optional[str]=None, domain: Optional[str]=None,
            bcg: Optional[str]=None, ea_group: Optional[str]=None,
-           search: Optional[str]=None, show_decomm: bool=False):
+           search: Optional[str]=None, show_decomm: bool=False, current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
         sql, p = "SELECT * FROM applications WHERE 1=1", []
         if not show_decomm:                     sql += " AND decommissioned=0"
@@ -282,14 +797,14 @@ def r_list(status: Optional[str]=None, domain: Optional[str]=None,
         return [row_to_dict(r) for r in conn.execute(sql + " ORDER BY id", p).fetchall()]
 
 @app.get("/api/apps/{app_id}")
-def r_get(app_id: str):
+def r_get(app_id: str, current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
         row = conn.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
     if not row: raise HTTPException(404, f"App {app_id} not found")
     return row_to_dict(row)
 
 @app.post("/api/apps", status_code=201)
-def r_create(body: AppWrite):
+def r_create(body: AppWrite, request: Request, current_user: dict = Depends(_require_auth)):
     if not (body.name or "").strip(): raise HTTPException(400, "name is required")
     with get_db() as conn:
         aid = next_id(conn)
@@ -311,19 +826,32 @@ def r_create(body: AppWrite):
             body.ea_group, body.ea_category, body.ea_sub_category or "-",
             datetime.now().strftime("%Y-%m-%d"),
         ))
+    _dump = getattr(body, "model_dump", None) or getattr(body, "dict")
+    after = _dump()
+    risks = []
+    if body.pi_spi: risks.append("PI_SPI_ENABLED")
+    write_log(
+        category="AUDIT", event_type="APP_CREATE", severity="INFO",
+        actor_ip=request.client.host if request.client else None,
+        resource_id=aid, after_state=after,
+        risk_flags=risks if risks else None,
+        message=f"Created app {aid}: {body.name}"
+    )
     return {"id": aid, "message": "Created"}
 
 @app.put("/api/apps/{app_id}")
-def r_update(app_id: str, body: AppWrite):
+def r_update(app_id: str, body: AppWrite, request: Request, current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
         row = conn.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
         if not row: raise HTTPException(404, f"App {app_id} not found")
         # BUG-02: ป้องกันการแก้ไข app ที่ถูก decommission แล้ว
         if row["decommissioned"]: raise HTTPException(400, "Cannot update a decommissioned application")
+        before = row_to_dict(row)
         c = dict(row)
         # BUG-13: body.dict() deprecated ใน Pydantic v2 → ใช้ model_dump() พร้อม fallback
         _dump = getattr(body, "model_dump", None) or getattr(body, "dict")
-        for k, v in _dump().items():
+        body_dict = _dump()
+        for k, v in body_dict.items():
             if v is not None: c[k] = v
         if body.stack is not None: c["stack"] = json.dumps(body.stack)
         if body.compliance is not None: c["compliance"] = json.dumps(body.compliance)
@@ -351,22 +879,82 @@ def r_update(app_id: str, body: AppWrite):
             c.get("ea_sub_category") or "-",
             datetime.now().strftime("%Y-%m-%d"), app_id,
         ))
+    # Build after state and detect risks
+    after = {**before, **{k: v for k, v in body_dict.items() if v is not None}}
+    diff  = _diff_fields(before, after)
+    risks = _detect_risks(before, after, body_dict)
+    sev   = "WARNING" if risks else "INFO"
+    write_log(
+        category="AUDIT", event_type="APP_UPDATE", severity=sev,
+        actor_ip=request.client.host if request.client else None,
+        resource_id=app_id, before_state=diff if diff else None, after_state=after,
+        risk_flags=risks if risks else None,
+        message=f"Updated app {app_id} ({app_id}): {', '.join(diff.keys()) if diff else 'no change'}"
+    )
+    if risks:
+        write_log(
+            category="COMPLIANCE", event_type="RISK_DETECTED", severity="WARNING",
+            actor_ip=request.client.host if request.client else None,
+            resource_id=app_id, risk_flags=risks,
+            message=f"Risk flags on update {app_id}: {risks}"
+        )
     return {"id": app_id, "message": "Updated"}
 
 @app.post("/api/apps/{app_id}/decommission")
-def r_decommission(app_id: str, body: DecommBody):
+def r_decommission(app_id: str, body: DecommBody, request: Request, current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
-        row = conn.execute("SELECT id, decommissioned FROM applications WHERE id=?", (app_id,)).fetchone()
+        row = conn.execute("SELECT id, decommissioned, name, criticality FROM applications WHERE id=?", (app_id,)).fetchone()
         if not row: raise HTTPException(404, f"App {app_id} not found")
         if row["decommissioned"]: raise HTTPException(400, "Already decommissioned")
         conn.execute("""UPDATE applications SET decommissioned=1, status='Decommissioned',
             decomm_date=?, decomm_reason=?, last_updated=? WHERE id=?""",
             (body.decomm_date, body.decomm_reason, datetime.now().strftime("%Y-%m-%d"), app_id))
+    risks = ["MISSION_CRITICAL_DECOMMISSION"] if row["criticality"] == "Mission Critical" else []
+    write_log(
+        category="AUDIT", event_type="APP_DECOMMISSION",
+        severity="WARNING" if risks else "INFO",
+        actor_ip=request.client.host if request.client else None,
+        resource_id=app_id,
+        after_state={"decomm_date": body.decomm_date, "decomm_reason": body.decomm_reason},
+        risk_flags=risks if risks else None,
+        message=f"Decommissioned app {app_id} ({row['name']}) on {body.decomm_date}"
+    )
     return {"id": app_id, "message": "Decommissioned"}
+
+class RestoreBody(BaseModel):
+    restore_reason: Optional[str] = "ยกเลิกการปลดระวาง"
+    restore_status: Optional[str] = "Active"   # Active | Phase-out | To-retire
+
+@app.post("/api/apps/{app_id}/restore")
+def r_restore(app_id: str, body: RestoreBody, request: Request, current_user: dict = Depends(_require_auth)):
+    """Undo / cancel a decommission — restore app back to active portfolio."""
+    allowed_statuses = {"Active", "Phase-out", "To-retire", "Planned"}
+    if body.restore_status not in allowed_statuses:
+        raise HTTPException(400, f"restore_status must be one of: {', '.join(sorted(allowed_statuses))}")
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id, decommissioned, name, criticality, decomm_date, decomm_reason FROM applications WHERE id=?",
+            (app_id,)).fetchone()
+        if not row: raise HTTPException(404, f"App {app_id} not found")
+        if not row["decommissioned"]: raise HTTPException(400, "App is not decommissioned")
+        conn.execute("""UPDATE applications
+            SET decommissioned=0, status=?, decomm_date=NULL, decomm_reason=NULL, last_updated=?
+            WHERE id=?""",
+            (body.restore_status, datetime.now().strftime("%Y-%m-%d"), app_id))
+    write_log(
+        category="AUDIT", event_type="APP_RESTORE",
+        severity="INFO",
+        actor_ip=request.client.host if request.client else None,
+        resource_id=app_id,
+        before_state={"decommissioned": True, "decomm_date": row["decomm_date"], "decomm_reason": row["decomm_reason"]},
+        after_state={"decommissioned": False, "status": body.restore_status},
+        message=f"Restored app {app_id} ({row['name']}) — reason: {body.restore_reason}"
+    )
+    return {"id": app_id, "status": body.restore_status, "message": "Restored"}
 
 # ─── EXPORT ────────────────────────────────────────────────────────────────────
 @app.get("/api/export")
-def r_export(include_decomm: bool = False):
+def r_export(include_decomm: bool = False, request: Request = None, current_user: dict = Depends(_require_auth)):
     """Export all apps as JSON — frontend converts to XLSX."""
     with get_db() as conn:
         sql = "SELECT * FROM applications"
@@ -374,7 +962,19 @@ def r_export(include_decomm: bool = False):
             sql += " WHERE decommissioned=0"
         sql += " ORDER BY id"
         rows = conn.execute(sql).fetchall()
-    return [row_to_dict(r) for r in rows]
+    result = [row_to_dict(r) for r in rows]
+    # Count PI/SPI apps in export
+    pi_spi_count = sum(1 for r in result if r.get("pi_spi"))
+    risks = ["PI_SPI_DATA_EXPORT"] if pi_spi_count > 0 else []
+    write_log(
+        category="AUDIT", event_type="DATA_EXPORT",
+        severity="WARNING" if risks else "INFO",
+        actor_ip=(request.client.host if request and request.client else None),
+        risk_flags=risks if risks else None,
+        extra={"app_count": len(result), "include_decomm": include_decomm, "pi_spi_count": pi_spi_count},
+        message=f"Exported {len(result)} apps (pi_spi={pi_spi_count})"
+    )
+    return result
 
 # ─── IMPORT ────────────────────────────────────────────────────────────────────
 class ImportApp(BaseModel):
@@ -424,7 +1024,7 @@ class ImportBody(BaseModel):
     mode: str = "upsert"   # "upsert" | "replace"
 
 @app.post("/api/import")
-def r_import(body: ImportBody):
+def r_import(body: ImportBody, request: Request = None, current_user: dict = Depends(_require_auth)):
     """
     Import apps from frontend (parsed from XLSX).
     mode=upsert : insert new + update existing (default)
@@ -501,12 +1101,18 @@ def r_import(body: ImportBody):
                 errors += 1
                 print(f"  Import error {a.id}: {ex}")
 
+    write_log(
+        category="AUDIT", event_type="DATA_IMPORT", severity="INFO",
+        actor_ip=(request.client.host if request and request.client else None),
+        extra={"mode": body.mode, "added": added, "updated": updated, "errors": errors},
+        message=f"Import {body.mode}: added={added} updated={updated} errors={errors}"
+    )
     return {"added": added, "updated": updated, "errors": errors,
             "total": added + updated, "message": f"Import complete"}
 
 
 @app.get("/api/ea/structure")
-def r_ea_structure():
+def r_ea_structure(current_user: dict = Depends(_require_auth)):
     groups = [
         {"group":"1. Direction","color":"#7b61ff","categories":["1.1 BOD","1.2 Vision, Mission, Strategies","1.3 Goals, Objectives","1.4 Governance Body","1.5 Standard & Policies","1.6 Business Process & Services"]},
         {"group":"2. Services","color":"#00e5ff","categories":["2.1 Customer","2.2 Partner","2.3 Service","2.4 Employee","2.6 Channel","2.7 Portal & Gateway"]},
@@ -521,6 +1127,407 @@ def r_ea_structure():
                 (g["group"], c)).fetchone()[0] for c in g["categories"]}
     return groups
 
+# ─── VENDOR ENDPOINTS ──────────────────────────────────────────────────────────
+def _next_vendor_id(conn) -> str:
+    row = conn.execute("SELECT vendor_id FROM vendors ORDER BY vendor_id DESC LIMIT 1").fetchone()
+    try: return f"VEN-{int((row['vendor_id'] if row else 'VEN-000').split('-')[1])+1:03d}"
+    except: return "VEN-001"
+
+def _next_eng_id(conn) -> str:
+    row = conn.execute("SELECT engagement_id FROM vendor_engagements ORDER BY engagement_id DESC LIMIT 1").fetchone()
+    try: return f"ENG-{int((row['engagement_id'] if row else 'ENG-000').split('-')[1])+1:03d}"
+    except: return "ENG-001"
+
+@app.get("/api/vendors")
+def r_vendors(tier: Optional[str]=None, type: Optional[str]=None,
+              status: Optional[str]=None, search: Optional[str]=None, current_user: dict = Depends(_require_auth)):
+    with get_vendor_db() as conn:
+        sql, p = "SELECT * FROM vendors WHERE 1=1", []
+        if tier:   sql += " AND tier=?";   p.append(tier)
+        if type:   sql += " AND type=?";   p.append(type)
+        if status: sql += " AND status=?"; p.append(status)
+        if search:
+            sql += " AND (name LIKE ? OR type LIKE ? OR contact_name LIKE ?)"
+            p.extend([f"%{search}%"]*3)
+        rows = conn.execute(sql+" ORDER BY tier,name", p).fetchall()
+        # attach capabilities count and last engagement date per vendor
+        result = []
+        for r in rows:
+            d = _vrow(r)
+            d["cap_count"] = conn.execute("SELECT COUNT(*) FROM vendor_capabilities WHERE vendor_id=?",(d["vendor_id"],)).fetchone()[0]
+            d["eng_count"]  = conn.execute("SELECT COUNT(*) FROM vendor_engagements WHERE vendor_id=?",(d["vendor_id"],)).fetchone()[0]
+            last = conn.execute("SELECT MAX(end_date) FROM vendor_engagements WHERE vendor_id=? AND status='Completed'",(d["vendor_id"],)).fetchone()[0]
+            d["last_engagement"] = last
+            result.append(d)
+    return result
+
+@app.get("/api/vendors/stats")
+def r_vendors_stats(current_user: dict = Depends(_require_auth)):
+    with get_vendor_db() as conn:
+        q = lambda s,*a: conn.execute(s,a).fetchone()[0]
+        open_crit = conn.execute(
+            "SELECT SUM(critical) FROM vendor_engagements WHERE remediation_status!='Closed'"
+        ).fetchone()[0] or 0
+        open_high = conn.execute(
+            "SELECT SUM(high) FROM vendor_engagements WHERE remediation_status!='Closed'"
+        ).fetchone()[0] or 0
+        cost_ytd  = conn.execute(
+            "SELECT SUM(cost) FROM vendor_engagements WHERE start_date>=?",
+            (f"{datetime.now().year}-01-01",)
+        ).fetchone()[0] or 0
+        return {
+            "total_vendors":   q("SELECT COUNT(*) FROM vendors"),
+            "preferred":       q("SELECT COUNT(*) FROM vendors WHERE tier='Preferred'"),
+            "approved":        q("SELECT COUNT(*) FROM vendors WHERE tier='Approved'"),
+            "total_eng":       q("SELECT COUNT(*) FROM vendor_engagements"),
+            "in_progress":     q("SELECT COUNT(*) FROM vendor_engagements WHERE status='In Progress'"),
+            "planned":         q("SELECT COUNT(*) FROM vendor_engagements WHERE status='Planned'"),
+            "open_critical":   int(open_crit),
+            "open_high":       int(open_high),
+            "cost_ytd":        int(cost_ytd),
+            "avg_score":       round(conn.execute("SELECT AVG(score) FROM vendor_engagements WHERE score IS NOT NULL").fetchone()[0] or 0, 1),
+        }
+
+@app.get("/api/vendors/{vendor_id}")
+def r_vendor_get(vendor_id: str, current_user: dict = Depends(_require_auth)):
+    with get_vendor_db() as conn:
+        row = conn.execute("SELECT * FROM vendors WHERE vendor_id=?", (vendor_id,)).fetchone()
+        if not row: raise HTTPException(404, f"Vendor {vendor_id} not found")
+        d = _vrow(row)
+        d["capabilities"] = [dict(r) for r in conn.execute(
+            "SELECT * FROM vendor_capabilities WHERE vendor_id=? ORDER BY proficiency DESC", (vendor_id,)).fetchall()]
+        d["engagements"]  = [_erow(r) for r in conn.execute(
+            "SELECT * FROM vendor_engagements WHERE vendor_id=? ORDER BY start_date DESC", (vendor_id,)).fetchall()]
+    return d
+
+@app.post("/api/vendors", status_code=201)
+def r_vendor_create(body: VendorWrite, current_user: dict = Depends(_require_auth)):
+    if not (body.name or "").strip(): raise HTTPException(400, "name is required")
+    today = datetime.now().strftime("%Y-%m-%d")
+    with get_vendor_db() as conn:
+        vid = _next_vendor_id(conn)
+        conn.execute("""INSERT INTO vendors VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+            vid, body.name, body.type, body.tier or "Registered", body.status or "Active",
+            json.dumps(body.specializations or []), json.dumps(body.certifications or []),
+            body.contact_name, body.contact_email, body.website,
+            body.country or "Thailand", int(body.nda_signed or False),
+            body.insurance_amt or 0, body.framework_end, body.risk_rating or "Medium",
+            0, body.notes, today, today))
+    return {"vendor_id": vid, "message": "Created"}
+
+@app.put("/api/vendors/{vendor_id}")
+def r_vendor_update(vendor_id: str, body: VendorWrite, current_user: dict = Depends(_require_auth)):
+    today = datetime.now().strftime("%Y-%m-%d")
+    with get_vendor_db() as conn:
+        row = conn.execute("SELECT * FROM vendors WHERE vendor_id=?", (vendor_id,)).fetchone()
+        if not row: raise HTTPException(404, f"Vendor {vendor_id} not found")
+        c = _vrow(row)
+        _dump = getattr(body, "model_dump", None) or getattr(body, "dict")
+        for k, v in _dump().items():
+            if v is not None: c[k] = v
+        conn.execute("""UPDATE vendors SET name=?,type=?,tier=?,status=?,specializations=?,certifications=?,
+            contact_name=?,contact_email=?,website=?,country=?,nda_signed=?,insurance_amt=?,
+            framework_end=?,risk_rating=?,notes=?,updated_at=? WHERE vendor_id=?""", (
+            c["name"], c.get("type"), c.get("tier","Registered"), c.get("status","Active"),
+            json.dumps(c.get("specializations") or []), json.dumps(c.get("certifications") or []),
+            c.get("contact_name"), c.get("contact_email"), c.get("website"),
+            c.get("country","Thailand"), int(c.get("nda_signed") or False),
+            c.get("insurance_amt",0), c.get("framework_end"), c.get("risk_rating","Medium"),
+            c.get("notes"), today, vendor_id))
+    return {"vendor_id": vendor_id, "message": "Updated"}
+
+@app.get("/api/engagements")
+def r_engagements(vendor_id: Optional[str]=None, app_id: Optional[str]=None,
+                  type: Optional[str]=None, status: Optional[str]=None,
+                  remediation_status: Optional[str]=None, current_user: dict = Depends(_require_auth)):
+    with get_vendor_db() as conn:
+        sql, p = "SELECT e.*, v.name as vendor_name FROM vendor_engagements e JOIN vendors v ON e.vendor_id=v.vendor_id WHERE 1=1", []
+        if vendor_id: sql += " AND e.vendor_id=?"; p.append(vendor_id)
+        if app_id:    sql += " AND e.app_id=?";    p.append(app_id)
+        if type:      sql += " AND e.type=?";       p.append(type)
+        if status:    sql += " AND e.status=?";     p.append(status)
+        if remediation_status: sql += " AND e.remediation_status=?"; p.append(remediation_status)
+        rows = conn.execute(sql+" ORDER BY e.start_date DESC", p).fetchall()
+    return [_erow(r) for r in rows]
+
+@app.get("/api/apps/{app_id}/engagements")
+def r_app_engagements(app_id: str, current_user: dict = Depends(_require_auth)):
+    with get_vendor_db() as conn:
+        rows = conn.execute("""SELECT e.*, v.name as vendor_name, v.tier as vendor_tier
+            FROM vendor_engagements e JOIN vendors v ON e.vendor_id=v.vendor_id
+            WHERE e.app_id=? ORDER BY e.start_date DESC""", (app_id,)).fetchall()
+    return [_erow(r) for r in rows]
+
+@app.post("/api/engagements", status_code=201)
+def r_engagement_create(body: EngagementWrite, current_user: dict = Depends(_require_auth)):
+    if not body.vendor_id: raise HTTPException(400, "vendor_id is required")
+    if not body.type:       raise HTTPException(400, "type is required")
+    today = datetime.now().strftime("%Y-%m-%d")
+    with get_vendor_db() as conn:
+        eid = _next_eng_id(conn)
+        conn.execute("""INSERT INTO vendor_engagements VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+            eid, body.vendor_id, body.app_id, body.type, body.scope,
+            body.start_date, body.end_date, body.status or "Planned",
+            body.critical or 0, body.high or 0, body.medium or 0, body.low or 0, body.info_count or 0,
+            body.report_ref, body.remediation_by, body.remediation_status or "Open",
+            body.cost or 0, body.score, body.notes, today))
+        # update vendor avg_score
+        conn.execute("""UPDATE vendors SET avg_score=(
+            SELECT ROUND(AVG(score),1) FROM vendor_engagements
+            WHERE vendor_id=? AND score IS NOT NULL), updated_at=? WHERE vendor_id=?""",
+            (body.vendor_id, today, body.vendor_id))
+    return {"engagement_id": eid, "message": "Created"}
+
+@app.put("/api/engagements/{engagement_id}")
+def r_engagement_update(engagement_id: str, body: EngagementWrite, current_user: dict = Depends(_require_auth)):
+    today = datetime.now().strftime("%Y-%m-%d")
+    with get_vendor_db() as conn:
+        row = conn.execute("SELECT * FROM vendor_engagements WHERE engagement_id=?", (engagement_id,)).fetchone()
+        if not row: raise HTTPException(404, f"Engagement {engagement_id} not found")
+        c = _erow(row)
+        _dump = getattr(body, "model_dump", None) or getattr(body, "dict")
+        for k, v in _dump().items():
+            if v is not None: c[k] = v
+        conn.execute("""UPDATE vendor_engagements SET
+            vendor_id=?,app_id=?,type=?,scope=?,start_date=?,end_date=?,status=?,
+            critical=?,high=?,medium=?,low=?,info_count=?,report_ref=?,
+            remediation_by=?,remediation_status=?,cost=?,score=?,notes=?
+            WHERE engagement_id=?""", (
+            c["vendor_id"],c.get("app_id"),c.get("type"),c.get("scope"),
+            c.get("start_date"),c.get("end_date"),c.get("status","Planned"),
+            c.get("critical",0),c.get("high",0),c.get("medium",0),c.get("low",0),c.get("info_count",0),
+            c.get("report_ref"),c.get("remediation_by"),c.get("remediation_status","Open"),
+            c.get("cost",0),c.get("score"),c.get("notes"),engagement_id))
+        # refresh avg_score
+        conn.execute("""UPDATE vendors SET avg_score=(
+            SELECT ROUND(AVG(score),1) FROM vendor_engagements
+            WHERE vendor_id=? AND score IS NOT NULL), updated_at=? WHERE vendor_id=?""",
+            (c["vendor_id"], today, c["vendor_id"]))
+    return {"engagement_id": engagement_id, "message": "Updated"}
+
+# ─── LOG ENDPOINTS ─────────────────────────────────────────────────────────────
+@app.get("/api/logs")
+def r_logs(
+    category: Optional[str] = None,
+    severity: Optional[str] = None,
+    event_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    from_ts: Optional[str] = None,
+    to_ts: Optional[str] = None,
+    limit: int = 200,
+    offset: int = 0,
+    current_user: dict = Depends(_require_auth)):
+    """Read audit logs — read-only endpoint for the Logs viewer."""
+    with get_audit_db() as conn:
+        sql  = "SELECT * FROM audit_log WHERE 1=1"
+        args: list = []
+        if category:    sql += " AND category=?";    args.append(category)
+        if severity:    sql += " AND severity=?";    args.append(severity)
+        if event_type:  sql += " AND event_type LIKE ?"; args.append(f"%{event_type}%")
+        if resource_id: sql += " AND resource_id=?"; args.append(resource_id)
+        if from_ts:     sql += " AND ts>=?";         args.append(from_ts)
+        if to_ts:       sql += " AND ts<=?";         args.append(to_ts)
+        sql += " ORDER BY ts DESC LIMIT ? OFFSET ?"
+        args.extend([min(limit, 1000), offset])
+        rows = conn.execute(sql, args).fetchall()
+        cnt_sql  = "SELECT COUNT(*) FROM audit_log WHERE 1=1"
+        cnt_args: list = []
+        if category: cnt_sql += " AND category=?"; cnt_args.append(category)
+        if severity: cnt_sql += " AND severity=?"; cnt_args.append(severity)
+        total_row = conn.execute(cnt_sql, cnt_args).fetchone()
+    result = []
+    for r in rows:
+        d = dict(r)
+        for f in ("before_state", "after_state", "risk_flags", "extra"):
+            try:    d[f] = json.loads(d[f]) if d.get(f) else None
+            except: d[f] = d.get(f)
+        result.append(d)
+    return {"logs": result, "total": total_row[0], "limit": limit, "offset": offset}
+
+@app.get("/api/logs/stats")
+def r_logs_stats(current_user: dict = Depends(_require_auth)):
+    """Aggregate stats for log dashboard."""
+    with get_audit_db() as conn:
+        def q(sql, *args): return conn.execute(sql, args).fetchone()[0]
+        today = datetime.now().strftime("%Y-%m-%d")
+        return {
+            "total":          q("SELECT COUNT(*) FROM audit_log"),
+            "audit":          q("SELECT COUNT(*) FROM audit_log WHERE category='AUDIT'"),
+            "compliance":     q("SELECT COUNT(*) FROM audit_log WHERE category='COMPLIANCE'"),
+            "operation":      q("SELECT COUNT(*) FROM audit_log WHERE category='OPERATION'"),
+            "errors_today":   q("SELECT COUNT(*) FROM audit_log WHERE severity='ERROR' AND ts>=?", today),
+            "warnings_today": q("SELECT COUNT(*) FROM audit_log WHERE severity='WARNING' AND ts>=?", today),
+            "pi_spi_exports": q("SELECT COUNT(*) FROM audit_log WHERE risk_flags LIKE '%PI_SPI_DATA_EXPORT%'"),
+            "risk_events":    q("SELECT COUNT(*) FROM audit_log WHERE risk_flags IS NOT NULL AND risk_flags != 'null'"),
+        }
+
+class LogQueryBody(BaseModel):
+    sql: str = ""
+
+@app.post("/api/logs/query")
+def r_logs_query(body: LogQueryBody, current_user: dict = Depends(_require_auth)):
+    """Execute a predefined audit SQL query (read-only SELECT only)."""
+    sql = (body.sql or "").strip()
+    if not sql:
+        raise HTTPException(400, "sql is required")
+    # Safety: only allow SELECT
+    if not sql.upper().lstrip().startswith("SELECT"):
+        raise HTTPException(400, "Only SELECT queries are allowed")
+    # Block dangerous keywords
+    blocked = ["DROP","DELETE","UPDATE","INSERT","ALTER","CREATE","ATTACH","DETACH","PRAGMA"]
+    for kw in blocked:
+        if kw in sql.upper():
+            raise HTTPException(400, f"Keyword '{kw}' is not allowed in queries")
+    try:
+        with get_audit_db() as conn:
+            conn.execute("PRAGMA query_only = ON")
+            cur = conn.execute(sql)
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchmany(500)]
+        return {"columns": cols, "rows": rows, "count": len(rows)}
+    except Exception as e:
+        raise HTTPException(400, f"Query error: {e}")
+
+
+# ─── AUTH ENDPOINTS ────────────────────────────────────────────────────────────
+
+class LoginBody(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/auth/login")
+def r_login(body: LoginBody, request: Request):
+    if not _AUTH_ENABLED:
+        return {"token": _create_jwt({"sub": "anonymous", "roles": ["admin"], "menus": ["*"]}),
+                "user": {"username": "anonymous", "display_name": "Anonymous", "roles": ["admin"], "menus": ["*"]}}
+    user = _get_user_dict(body.username)
+    if not user or not _verify_password(body.password, user.get("hashed_password", "")):
+        write_log(category="AUDIT", event_type="LOGIN_FAIL", severity="WARN",
+                  actor_ip=request.client.host if request.client else "-",
+                  message=f"Login failed for username: {body.username}")
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token_payload = {
+        "sub":          user["username"],
+        "display_name": user.get("display_name", user["username"]),
+        "email":        user.get("email", ""),
+        "roles":        user.get("roles", ["viewer"]),
+        "menus":        user.get("menus", []),
+    }
+    token = _create_jwt(token_payload)
+    write_log(category="AUDIT", event_type="LOGIN_SUCCESS", severity="INFO",
+              actor_ip=request.client.host if request.client else "-",
+              resource_id=user["username"],
+              message=f"Login success: {user.get('display_name', user['username'])}")
+    return {
+        "token": token,
+        "expire_minutes": _UCFG.get("token_expire_minutes", 480),
+        "user": {"username": user["username"], **{k: v for k, v in token_payload.items() if k != "sub"}}
+    }
+
+@app.get("/api/auth/me")
+def r_me(current_user: dict = Depends(_require_auth)):
+    return current_user
+
+@app.post("/api/auth/logout")
+def r_logout(current_user: dict = Depends(_require_auth)):
+    # JWT is stateless — client drops the token; log the event
+    write_log(category="AUDIT", event_type="LOGOUT", severity="INFO",
+              resource_id=current_user.get("sub"),
+              message=f"Logout: {current_user.get('display_name', current_user.get('sub'))}")
+    return {"message": "Logged out"}
+
+
+@app.get("/api/auth/users")
+def r_list_users(current_user: dict = Depends(_require_auth)):
+    """List all users (admin only) — passwords are never returned."""
+    if "admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Admin role required")
+    safe_users = []
+    for u in _UCFG.get("users", []):
+        safe_users.append({
+            "username":     u.get("username"),
+            "display_name": u.get("display_name", ""),
+            "email":        u.get("email", ""),
+            "active":       u.get("active", True),
+            "roles":        u.get("roles", []),
+            "menus":        u.get("menus", []),
+        })
+    return {
+        "users": safe_users,
+        "token_expire_minutes": _UCFG.get("token_expire_minutes", 480),
+        "auth_enabled": _AUTH_ENABLED,
+    }
+
+
+# ─── USER MANAGEMENT ENDPOINTS ────────────────────────────────────────────────
+
+class UpdateUserBody(BaseModel):
+    menus:        Optional[List[str]] = None
+    roles:        Optional[List[str]] = None
+    active:       Optional[bool]      = None
+    display_name: Optional[str]       = None
+    email:        Optional[str]       = None
+
+VALID_MENUS = {"*","dashboard","inventory","architecture","planning",
+               "analytics","vendor","asset","ops","audit","config"}
+VALID_ROLES = {"admin","editor","viewer","vendor"}
+
+@app.put("/api/auth/users/{username}")
+def r_update_user(username: str, body: UpdateUserBody,
+                  current_user: dict = Depends(_require_auth)):
+    """Update user menus/roles/status (admin only)."""
+    if "admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Admin role required")
+    if username == current_user.get("sub"):
+        raise HTTPException(status_code=400, detail="Cannot edit your own account")
+
+    # Reload config fresh from disk each time so concurrent edits are safe
+    if not os.path.exists(_USERS_CONFIG_PATH):
+        raise HTTPException(status_code=503, detail="users.config.json not found")
+    with open(_USERS_CONFIG_PATH, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+
+    user_rec = next((u for u in cfg.get("users", []) if u["username"] == username), None)
+    if not user_rec:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+
+    changed = {}
+    if body.menus is not None:
+        bad = [m for m in body.menus if m not in VALID_MENUS]
+        if bad:
+            raise HTTPException(status_code=400, detail=f"Invalid menu keys: {bad}")
+        user_rec["menus"] = body.menus
+        changed["menus"] = body.menus
+    if body.roles is not None:
+        bad = [r for r in body.roles if r not in VALID_ROLES]
+        if bad:
+            raise HTTPException(status_code=400, detail=f"Invalid roles: {bad}")
+        user_rec["roles"] = body.roles
+        changed["roles"] = body.roles
+    if body.active is not None:
+        user_rec["active"] = body.active
+        changed["active"] = body.active
+    if body.display_name is not None:
+        user_rec["display_name"] = body.display_name
+        changed["display_name"] = body.display_name
+    if body.email is not None:
+        user_rec["email"] = body.email
+        changed["email"] = body.email
+
+    # Write back
+    with open(_USERS_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+    # Also update in-memory cache
+    _UCFG["users"] = cfg["users"]
+
+    write_log(category="AUDIT", event_type="USER_UPDATE", severity="INFO",
+              resource_id=username,
+              after_state=json.dumps(changed, ensure_ascii=False),
+              message=f"User '{username}' updated by {current_user.get('sub','?')}: {list(changed.keys())}")
+
+    return {"username": username, "updated": changed, "message": "User updated"}
+
 # ─── STATIC + CATCH-ALL ────────────────────────────────────────────────────────
 if os.path.isdir(STATIC_DIR):
     app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
@@ -530,7 +1537,7 @@ def catch_all(full_path: str = ""):
     if full_path.startswith("api/"): raise HTTPException(404)
     idx = os.path.join(STATIC_DIR, "index.html")
     return FileResponse(idx) if os.path.exists(idx) else JSONResponse(
-        {"service": f"MPX AppPort EA Portfolio {APP_VERSION}", "docs": "/docs"})
+        {"service": f"MPX Studio EA Portfolio {APP_VERSION}", "docs": "/docs"})
 
 # ─── SEED DATA ─────────────────────────────────────────────────────────────────
 def _assign_biz_owner(apps: list) -> list:
@@ -688,16 +1695,26 @@ def _seed_apps() -> list:
         {"id":'APP-100',"name":'Digital Twin Platform',"domain":'Digital',"vendor":'Internal',"type":'Inhouse',"status":'Planned',"bcg":'Grow',"health":65,"tech_debt":30,"age":0,"tco":880,"users":0,"criticality":'Medium',"dr":0,"eol":'2033-12',"pi_spi":0,"contract_end":'N/A',"integration":8,"stack":'["Python", "IoT", "Azure Digital Twins", "React"]',"capability":'Digital Twin',"strategic":90,"persons":5,"src_avail":1,"service_hour":'Business Hours',"maint_window":'N/A',"lang":'Python',"os":'Azure Cloud',"db_platform":'Azure CosmosDB',"support":'Inhouse',"owner":'Thanakrit W.',"stream":'Data & AI',"approach":'Build',"assess_status":'Not Started',"assess_date":'',"wave":3,"ea_group":'4. Support',"ea_category":'4.2 Corporate Information',"ea_sub_category":'-',"last_updated":'2025-01-01'}
     ]
 
+# ─── STARTUP (FastAPI lifecycle) ───────────────────────────────────────────────
+app.add_middleware(OperationLogMiddleware)
+
+@app.on_event("startup")
+def _on_startup():
+    init_audit_db()
+    init_vendor_db()
+    init_db()
+
 # ─── ENTRY POINT ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    init_db()
     print(f"\n{'='*55}")
     print(f"  {APP_NAME} EA Portfolio {APP_VERSION}")
     print(f"{'='*55}")
     print(f"  Config   : {_CONFIG_PATH}")
+    print(f"  Users    : {_USERS_CONFIG_PATH} ({'AUTH ON' if _AUTH_ENABLED else 'AUTH OFF'})")
     print(f"  Frontend : http://localhost:{PORT}/")
     print(f"  API Docs : http://localhost:{PORT}/docs")
     print(f"  Database : {os.path.abspath(DB_PATH)}")
+    print(f"  Audit DB : {os.path.abspath(AUDIT_DB_PATH)}")
     print(f"{'='*55}\n")
     uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=True, reload_excludes=["*.db"])

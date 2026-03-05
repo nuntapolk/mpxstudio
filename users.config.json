@@ -1,0 +1,70 @@
+{
+  "jwt_secret": "394db9a9a20066be45687ee89f8e6c5724ca6f2dce570ca632fe84b843c8f72d",
+  "token_expire_minutes": 480,
+  "users": [
+    {
+      "username": "admin",
+      "display_name": "System Admin",
+      "email": "admin@mpx.co.th",
+      "hashed_password": "pbkdf2$sha256$200000$/ERfas2UNURva5g2pbhonQ==$nwTlmjNWFa1Dy6XCKZ7yT1XHGaSSw/MTeztJBqNreJg=",
+      "active": true,
+      "roles": [
+        "admin"
+      ],
+      "menus": [
+        "*"
+      ]
+    },
+    {
+      "username": "ea_viewer",
+      "display_name": "EA Viewer",
+      "email": "ea@mpx.co.th",
+      "hashed_password": "pbkdf2$sha256$200000$Hk1/bZ5hk+H4jh0KodThSA==$Xyg7ZRkSzv9xbGojQD/PXebIZ+n4MXFKZfsB6iGr0iY=",
+      "active": true,
+      "roles": [
+        "viewer"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture"
+      ]
+    },
+    {
+      "username": "vendor_mgr",
+      "display_name": "Vendor Manager",
+      "email": "vendor@mpx.co.th",
+      "hashed_password": "pbkdf2$sha256$200000$jWNjFwG5pFvy4mzKnZx0GA==$XU0CXOGD9XwhTUI7AwkOZzjk0k49NW0HKJ+uf2Zhppw=",
+      "active": true,
+      "roles": [
+        "vendor"
+      ],
+      "menus": [
+        "dashboard",
+        "vendor"
+      ]
+    },
+    {
+      "username": "ea_editor",
+      "display_name": "EA Editor",
+      "email": "editor@mpx.co.th",
+      "hashed_password": "pbkdf2$sha256$200000$pltbuph1u7uv7pI7P+6VKA==$XzzF7X+rs4AFQGOboWz60nTc/Wvt41p3nTshtUQHnnE=",
+      "active": true,
+      "roles": [
+        "editor"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "asset",
+        "ops",
+        "vendor",
+        "audit",
+        "config"
+      ]
+    }
+  ]
+}

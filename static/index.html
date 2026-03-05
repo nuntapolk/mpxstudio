@@ -816,6 +816,8 @@ body{
 /* Inventory table extras */
 .inv-tbl .row-decomm td{opacity:.45;text-decoration:none}
 .inv-tbl .row-decomm .decomm-badge{opacity:1}
+/* BUG#3 FIX: restore button inside decomm row must be fully visible & clickable */
+.inv-tbl .row-decomm td:last-child{opacity:1}
 .inv-tbl .row-decomm{background:repeating-linear-gradient(
   -45deg,transparent,transparent 4px,rgba(255,71,87,.03) 4px,rgba(255,71,87,.03) 8px)}
 
@@ -1279,10 +1281,250 @@ body{
 #api-loading{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--text);font-size:13px;}
 .api-spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--border2);border-top-color:var(--accent);animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── VENDOR MANAGEMENT ─────────────────────────────────────────────────────── */
+.vm-page{display:flex;flex-direction:column;gap:16px}
+.vm-stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:4px}
+.vm-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.vm-stat-val{font-size:20px;font-weight:800;color:var(--accent);font-family:var(--mono)}
+.vm-stat-label{font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+/* Vendor tier badge */
+.vm-tier{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+.vm-tier-preferred{background:rgba(255,193,7,.2);color:#ffc107;border:1px solid rgba(255,193,7,.35)}
+.vm-tier-approved{background:rgba(0,214,143,.15);color:var(--green);border:1px solid rgba(0,214,143,.3)}
+.vm-tier-registered{background:rgba(160,160,180,.12);color:var(--dim);border:1px solid var(--border2)}
+/* Status */
+.vm-status-active{color:var(--green)}
+.vm-status-suspended{color:var(--yellow)}
+.vm-status-blacklisted{color:var(--red)}
+/* Engagement status badge */
+.vm-eng-completed{background:rgba(0,214,143,.15);color:var(--green);border:1px solid rgba(0,214,143,.3)}
+.vm-eng-inprogress{background:rgba(0,229,255,.12);color:var(--accent);border:1px solid rgba(0,229,255,.25)}
+.vm-eng-planned{background:rgba(160,160,180,.1);color:var(--dim);border:1px solid var(--border2)}
+.vm-eng-cancelled{background:rgba(255,71,87,.1);color:var(--red);border:1px solid rgba(255,71,87,.25)}
+/* Remediation badge */
+.vm-rem-closed{background:rgba(0,214,143,.12);color:var(--green);border:1px solid rgba(0,214,143,.25)}
+.vm-rem-open{background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.25)}
+.vm-rem-inprogress{background:rgba(255,193,7,.12);color:#ffc107;border:1px solid rgba(255,193,7,.25)}
+/* Filter bar (reused style) */
+.vm-filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.vm-filter-bar select,.vm-filter-bar input{height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;font-family:var(--font)}
+.vm-filter-btn{height:32px;padding:0 14px;border-radius:7px;border:1px solid var(--border2);background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.vm-filter-btn-ghost{background:var(--card2);color:var(--dim);border-color:var(--border2)}
+/* Table */
+.vm-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.vm-table{width:100%;border-collapse:collapse;font-size:12px}
+.vm-table th{background:var(--card2);padding:9px 12px;text-align:left;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;border-bottom:1px solid var(--border)}
+.vm-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-table tr:last-child td{border-bottom:none}
+.vm-table tr.clickable:hover td{background:rgba(123,97,255,.07);cursor:pointer}
+/* Score stars */
+.vm-score{display:flex;gap:2px;align-items:center;font-size:11px;font-family:var(--mono);font-weight:700}
+/* Findings chips */
+.vm-findings{display:flex;gap:4px;align-items:center}
+.vm-find-chip{display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:800;font-family:var(--mono)}
+.vm-find-c{background:rgba(255,71,87,.25);color:var(--red)}
+.vm-find-h{background:rgba(255,159,67,.2);color:#ff9f43}
+.vm-find-m{background:rgba(255,193,7,.15);color:#ffc107}
+.vm-find-l{background:rgba(0,214,143,.12);color:var(--green)}
+/* Detail panel (slide-in) */
+.vm-detail{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px}
+.vm-detail-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.vm-detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.vm-detail-item{display:flex;flex-direction:column;gap:3px}
+.vm-detail-key{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+.vm-detail-val{font-size:12px;color:var(--text)}
+.vm-cap-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.vm-cap-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;background:var(--card2);border:1px solid var(--border2);color:var(--text)}
+.vm-cap-chip .stars{color:#ffc107;letter-spacing:-2px}
+.vm-cap-chip .cert{color:var(--green);font-size:9px}
+/* Coverage map */
+.vm-map-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.vm-map-table{border-collapse:collapse;font-size:11px;min-width:600px}
+.vm-map-table th{background:var(--card2);padding:8px 10px;white-space:nowrap;border:1px solid var(--border);color:var(--dim);font-size:10px;font-weight:700;text-transform:uppercase}
+.vm-map-table td{padding:7px 10px;border:1px solid var(--border);color:var(--text);white-space:nowrap}
+.vm-map-table td.app-name{font-weight:700;font-size:11px;background:var(--card2)}
+.vm-cov-ok{background:rgba(0,214,143,.15);color:var(--green);text-align:center;font-weight:700;font-size:11px}
+.vm-cov-warn{background:rgba(255,193,7,.12);color:#ffc107;text-align:center;font-weight:700;font-size:11px}
+.vm-cov-none{background:rgba(255,71,87,.08);color:var(--red);text-align:center;font-size:11px;font-weight:700}
+.vm-cov-na{color:var(--dim);text-align:center;font-size:11px}
+/* Analysis charts placeholder */
+.vm-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.vm-analysis-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
+.vm-analysis-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.vm-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.vm-bar-label{font-size:11px;color:var(--text);min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-bar-track{flex:1;height:8px;background:var(--card2);border-radius:4px;overflow:hidden}
+.vm-bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.vm-bar-val{font-size:11px;font-family:var(--mono);color:var(--dim);min-width:30px;text-align:right}
+/* Modal for add/edit */
+.vm-modal-overlay{display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center}
+.vm-modal-overlay.open{display:flex}
+.vm-modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:24px;width:680px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.vm-modal-title{font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px}
+.vm-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vm-field{display:flex;flex-direction:column;gap:5px}
+.vm-label{font-size:11px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.vm-input{height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:13px;font-family:var(--font)}
+.vm-input:focus{outline:none;border-color:var(--accent)}
+.vm-select{height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:13px;font-family:var(--font)}
+.vm-textarea{padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;font-family:var(--font);resize:vertical;min-height:60px}
+.vm-modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.vm-btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--font)}
+.vm-btn-primary{background:var(--accent);color:#000}
+.vm-btn-ghost{background:var(--card2);color:var(--dim);border:1px solid var(--border2)}
+
+/* ─── AUDIT LOG VIEWER ──────────────────────────────────────────────────────── */
+.sl-page{display:flex;flex-direction:column;gap:16px}
+.sl-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.sl-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.sl-stat-val{font-size:22px;font-weight:800;color:var(--accent)}
+.sl-stat-label{font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.sl-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:16px}
+.sl-tab{padding:8px 16px;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--dim);background:none;font-family:var(--font);transition:all .15s;position:relative;top:1px}
+.sl-tab.active{background:var(--card);border-color:var(--border);color:var(--accent)}
+.sl-tab:hover:not(.active){color:var(--text)}
+.sl-filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.sl-filter-bar select,.sl-filter-bar input{height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;font-family:var(--font)}
+.sl-filter-bar input{min-width:160px}
+.sl-filter-btn{height:32px;padding:0 14px;border-radius:7px;border:1px solid var(--border2);background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.sl-filter-btn-reset{background:var(--card2);color:var(--dim);border-color:var(--border2)}
+.sl-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.sl-table{width:100%;border-collapse:collapse;font-size:12px}
+.sl-table th{background:var(--card2);padding:9px 12px;text-align:left;font-size:11px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;border-bottom:1px solid var(--border)}
+.sl-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-table tr:last-child td{border-bottom:none}
+.sl-table tr:hover td{background:var(--card2);cursor:pointer}
+.sl-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.sl-badge-audit{background:rgba(123,97,255,.2);color:#a78bfa}
+.sl-badge-compliance{background:rgba(255,159,67,.2);color:#ffa940}
+.sl-badge-operation{background:rgba(0,229,255,.15);color:#00e5ff}
+.sl-badge-info{background:rgba(0,214,143,.15);color:var(--green)}
+.sl-badge-warning{background:rgba(255,193,7,.2);color:#ffc107}
+.sl-badge-error{background:rgba(255,71,87,.2);color:var(--red)}
+.sl-badge-critical{background:rgba(255,71,87,.4);color:#ff1a1a;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:.5}}
+.sl-risk-chip{display:inline-block;padding:2px 7px;margin:1px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(255,71,87,.18);color:var(--red);border:1px solid rgba(255,71,87,.3)}
+.sl-detail-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;font-size:12px}
+.sl-detail-title{font-size:14px;font-weight:800;margin-bottom:12px;color:var(--text)}
+.sl-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sl-detail-item{display:flex;flex-direction:column;gap:2px}
+.sl-detail-key{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+.sl-detail-val{color:var(--text);word-break:break-word}
+.sl-json-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--dim);max-height:200px;overflow-y:auto;line-height:1.5}
+.sl-pagination{display:flex;align-items:center;gap:8px;padding:10px 0;font-size:12px;color:var(--dim)}
+.sl-page-btn{height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--font)}
+.sl-page-btn:disabled{opacity:.4;cursor:not-allowed}
+.sl-empty{text-align:center;padding:40px;color:var(--dim);font-size:13px}
+/* Quick Queries */
+.sl-qq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sl-qq-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s}
+.sl-qq-card:hover{border-color:var(--accent);background:rgba(123,97,255,.08)}
+.sl-qq-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sl-qq-desc{font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5}
+.sl-qq-sql{font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--card);padding:6px 10px;border-radius:6px;border:1px solid var(--border);line-height:1.5}
+.sl-qq-result{margin-top:16px}
+.sl-qq-result-table{width:100%;border-collapse:collapse;font-size:11px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.sl-qq-result-table th{background:var(--card2);padding:7px 10px;text-align:left;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.sl-qq-result-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.sl-qq-result-table tr:last-child td{border-bottom:none}
+.sl-custom-sql{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.sl-custom-sql textarea{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:12px;resize:vertical;min-height:80px}
 </style>
-<script id="appport-config" type="application/json">{"version":"V001","app_name":"MPX Studio","subtitle":"EA PORTFOLIO","organization":"MPX","description":"Enterprise Application Portfolio Management","mpx2":{"badges":[{"grp":"2. Services","cat":"Customer","l":0.0,"t":0.0,"w":3.0,"h":29.1},{"grp":"2. Services","cat":"Partner","l":0.0,"t":29.1,"w":3.0,"h":25.3},{"grp":"2. Services","cat":"Service","l":0.0,"t":54.4,"w":3.0,"h":23.7},{"grp":"2. Services","cat":"Employee","l":0.0,"t":78.1,"w":3.0,"h":17.6},{"grp":"2. Services","cat":"Channel","l":3.2,"t":0.0,"w":3.8,"h":52.8},{"grp":"2. Services","cat":"Portal & Gateway","l":3.2,"t":52.8,"w":3.8,"h":42.9},{"grp":"1. Direction","cat":"BOD","l":27.2,"t":0.6,"w":40.3,"h":5.5},{"grp":"1. Direction","cat":"Vision, Mission, Strategies","l":27.2,"t":6.4,"w":40.3,"h":5.5},{"grp":"1. Direction","cat":"Goals, Objectives","l":27.2,"t":12.3,"w":40.3,"h":6.1},{"grp":"1. Direction","cat":"Governance Body","l":27.2,"t":18.7,"w":40.3,"h":5.5},{"grp":"1. Direction","cat":"Standard & Policies","l":27.2,"t":24.5,"w":40.3,"h":5.5},{"grp":"1. Direction","cat":"Business Process & Services","l":27.2,"t":30.3,"w":40.3,"h":6.1},{"grp":"3. Core Products","cat":"Organization","l":17.3,"t":37.7,"w":50.4,"h":6.4},{"grp":"3. Core Products","cat":"Corporate & Core System","l":17.3,"t":44.4,"w":50.4,"h":8.0},{"grp":"3. Core Products","cat":"Back Office & Support System","l":17.3,"t":52.7,"w":50.4,"h":7.0},{"grp":"4. Support","cat":"Training & Communication","l":17.3,"t":60.0,"w":50.4,"h":7.0},{"grp":"4. Support","cat":"Corporate Information","l":17.3,"t":67.4,"w":50.4,"h":7.0},{"grp":"4. Support","cat":"Corporate Application & Information Technology","l":7.3,"t":76.0,"w":63.4,"h":6.4},{"grp":"","cat":"Enterprise Information Technology","l":0.0,"t":88.8,"w":100.0,"h":7.4},{"grp":"5. Governance","cat":"Corporate Security & Policy","l":76.5,"t":0.0,"w":3.8,"h":88.8},{"grp":"5. Governance","cat":"Risk & Internal Control","l":80.6,"t":0.0,"w":5.0,"h":88.8},{"grp":"5. Governance","cat":"Law & Compliance","l":85.8,"t":0.0,"w":4.0,"h":88.8}]}}</script>
+<script id="mpx-studio-config" type="application/json">{"version":"V2.0 B21.4-B2","app_name":"MPX Studio","subtitle":"EA PORTFOLIO","organization":"MPX","description":"Enterprise Application Portfolio Management","mpx2":{"_comment":"badge positions สำหรับ MPX 2 view — l=left%, t=top%, w=block-width%, h=block-height%","badges":[{"grp":"2. Services","cat":"Customer","l":0.0,"t":0.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Partner","l":0.0,"t":20.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Service","l":0.0,"t":40.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Employee","l":0.0,"t":60.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Channel","l":3.6,"t":29.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Portal & Gateway","l":8.1,"t":24.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"BOD","l":49.0,"t":0.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Vision, Mission, Strategies","l":57.5,"t":5.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Goals, Objectives","l":58.0,"t":11.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Governance Body","l":54.5,"t":17.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Standard & Policies","l":55.5,"t":22.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Business Process & Services","l":58.5,"t":28.0,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Organization","l":47.5,"t":34.5,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Corporate & Core System","l":56.0,"t":43.5,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Back Office & Support System","l":57.0,"t":53.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Training & Communication","l":56.0,"t":63.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Corporate Information","l":54.0,"t":74.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Corporate Application & Information Technology","l":57.0,"t":83.7,"w":6.0,"h":5.0},{"grp":"","cat":"Enterprise Information Technology","l":63.0,"t":92.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Corporate Security & Policy","l":76.8,"t":21.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Risk & Internal Control","l":81.4,"t":17.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Law & Compliance","l":85.8,"t":28.0,"w":6.0,"h":5.0}]}}</script>
 </head>
 <body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LOGIN OVERLAY — shown before authentication
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="auth-login-overlay" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#0a0e1e 0%,#0d1a2e 50%,#0a0e1e 100%);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0">
+
+  <!-- Animated background dots -->
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    <div style="position:absolute;width:600px;height:600px;border-radius:50%;
+      background:radial-gradient(circle,rgba(0,102,204,.08) 0%,transparent 70%);
+      top:-100px;left:-100px;animation:auth-pulse 8s ease-in-out infinite"></div>
+    <div style="position:absolute;width:400px;height:400px;border-radius:50%;
+      background:radial-gradient(circle,rgba(0,180,120,.06) 0%,transparent 70%);
+      bottom:-80px;right:-80px;animation:auth-pulse 10s ease-in-out infinite reverse"></div>
+  </div>
+
+  <!-- Login card -->
+  <div style="
+    position:relative;z-index:1;
+    background:rgba(16,24,48,.92);
+    border:1px solid rgba(0,102,204,.3);
+    border-radius:20px;
+    padding:48px 52px 40px;
+    width:420px;max-width:92vw;
+    box-shadow:0 24px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04);
+    backdrop-filter:blur(16px)">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:36px;margin-bottom:10px">⬡</div>
+      <div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:.5px">MPX Studio</div>
+      <div style="color:rgba(255,255,255,.4);font-size:12px;letter-spacing:2px;margin-top:4px">EA PORTFOLIO</div>
+    </div>
+
+    <!-- Error message -->
+    <div id="auth-error" style="
+      display:none;
+      background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.3);
+      border-radius:8px;padding:10px 14px;margin-bottom:18px;
+      color:#ff6b6b;font-size:13px;text-align:center"></div>
+
+    <!-- Form -->
+    <form id="auth-form" onsubmit="return false">
+      <div style="margin-bottom:18px">
+        <label style="display:block;color:rgba(255,255,255,.55);font-size:12px;margin-bottom:6px;letter-spacing:.5px">USERNAME</label>
+        <input id="auth-username" type="text" autocomplete="username" spellcheck="false"
+          style="width:100%;box-sizing:border-box;
+            background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+            border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;
+            outline:none;transition:border-color .2s"
+          onfocus="this.style.borderColor='rgba(0,102,204,.7)'"
+          onblur="this.style.borderColor='rgba(255,255,255,.12)'"
+          placeholder="username">
+      </div>
+      <div style="margin-bottom:24px">
+        <label style="display:block;color:rgba(255,255,255,.55);font-size:12px;margin-bottom:6px;letter-spacing:.5px">PASSWORD</label>
+        <input id="auth-password" type="password" autocomplete="current-password"
+          style="width:100%;box-sizing:border-box;
+            background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+            border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;
+            outline:none;transition:border-color .2s"
+          onfocus="this.style.borderColor='rgba(0,102,204,.7)'"
+          onblur="this.style.borderColor='rgba(255,255,255,.12)'"
+          placeholder="••••••••">
+      </div>
+      <button id="auth-submit-btn" onclick="_authDoLogin()" type="button"
+        style="width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;
+          background:linear-gradient(135deg,#0066cc,#0050a0);
+          color:#fff;font-size:15px;font-weight:600;letter-spacing:.3px;
+          transition:opacity .2s,transform .1s;box-shadow:0 4px 16px rgba(0,102,204,.35)">
+        Sign In
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px;color:rgba(255,255,255,.25);font-size:11px">
+      MPX Studio EA Portfolio &nbsp;·&nbsp; Secure Access
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes auth-pulse {
+  0%,100%{transform:scale(1);opacity:.6}
+  50%{transform:scale(1.15);opacity:1}
+}
+#auth-login-overlay input::-webkit-input-placeholder{color:rgba(255,255,255,.2)}
+</style>
+
 
 <!-- TOP BAR -->
 <header id="topbar">
@@ -1303,6 +1545,24 @@ body{
       <button class="theme-btn" id="theme-light" title="Light Mode">☀️</button>
     </div>
     <button class="btn-add" id="btn-add-app">+ Add App</button>
+    <!-- Auth user chip -->
+    <div id="auth-user-chip" style="display:none;align-items:center;gap:8px;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+      border-radius:20px;padding:5px 12px 5px 8px;cursor:default">
+      <div style="width:26px;height:26px;border-radius:50%;
+        background:linear-gradient(135deg,#0066cc,#00b478);
+        display:flex;align-items:center;justify-content:center;
+        color:#fff;font-size:12px;font-weight:700" id="auth-avatar">A</div>
+      <div style="display:flex;flex-direction:column;line-height:1.2">
+        <span id="auth-display-name" style="color:var(--text);font-size:12px;font-weight:600"></span>
+        <span id="auth-role-tag" style="color:var(--muted);font-size:10px"></span>
+      </div>
+      <button onclick="_authLogout()" title="Logout"
+        style="background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);
+          border-radius:8px;padding:3px 8px;color:#ff6b6b;font-size:11px;cursor:pointer;
+          transition:background .2s" onmouseover="this.style.background='rgba(255,80,80,.3)'"
+          onmouseout="this.style.background='rgba(255,80,80,.15)'">Logout</button>
+    </div>
   </div>
 </header>
 
@@ -1448,11 +1708,36 @@ body{
 
   <div class="sb-divider"></div>
 
+  <!-- VENDOR MANAGEMENT group -->
+  <div class="sb-section">
+    <div class="sb-section-label"><span>Vendor Management</span><div class="sl-line"></div></div>
+    <button class="sb-item" data-view="vendor-registry" data-group="Vendor Management" data-label="Vendor Registry" data-tooltip="Vendor Registry" data-desc="รายชื่อ Security Vendor ทั้งหมด พร้อม Tier, Capabilities และ Profile">
+      <span class="si-icon">🏢</span><span class="si-label">Vendor Registry</span>
+    </button>
+    <button class="sb-item" data-view="vendor-engagement" data-group="Vendor Management" data-label="Engagement Tracker" data-tooltip="Engagement Tracker" data-desc="ติดตามประวัติงาน Pentest, VA, SAST, Compliance Audit ทุก Engagement">
+      <span class="si-icon">📋</span><span class="si-label">Engagement Tracker</span>
+    </button>
+    <button class="sb-item" data-view="vendor-findings" data-group="Vendor Management" data-label="Findings Dashboard" data-tooltip="Findings Dashboard" data-desc="วิเคราะห์ Findings รวม Critical/High, Remediation Status และ Vendor Performance">
+      <span class="si-icon">🎯</span><span class="si-label">Findings Dashboard</span>
+    </button>
+    <button class="sb-item" data-view="vendor-appmap" data-group="Vendor Management" data-label="App Coverage Map" data-tooltip="App Coverage Map" data-desc="ตรวจสอบว่า App ใดผ่าน Pentest/VA/SAST แล้ว และ App ใดยังขาด Security Assessment">
+      <span class="si-icon">🗺</span><span class="si-label">App Coverage Map</span>
+    </button>
+  </div>
+
+  <div class="sb-divider"></div>
+
   <!-- SETTINGS group -->
   <div class="sb-section">
     <div class="sb-section-label"><span>Settings</span><div class="sl-line"></div></div>
+    <button class="sb-item" data-view="system-config" data-group="Settings" data-label="System Config" data-tooltip="System Config" data-desc="จัดการ Users, Roles และสิทธิ์การเข้าถึงระบบ (Admin only)">
+      <span class="si-icon">⚙</span><span class="si-label">System Config</span>
+    </button>
     <button class="sb-item" data-view="settings-import-export" data-group="Settings" data-label="Import / Export" data-tooltip="Import / Export" data-desc="นำเข้าหรือส่งออกข้อมูลแอปพลิเคชันในรูปแบบ JSON หรือ Excel">
       <span class="si-icon">⇅</span><span class="si-label">Import / Export</span>
+    </button>
+    <button class="sb-item" data-view="settings-logs" data-group="Settings" data-label="Audit Logs" data-tooltip="Audit Logs" data-desc="ดู Audit Log, Compliance Log และ Operation Log แบบ Read-only พร้อม Quick Queries สำหรับ Admin">
+      <span class="si-icon">🪵</span><span class="si-label">Audit Logs</span>
     </button>
   </div>
 
@@ -1990,9 +2275,34 @@ body{
     </div>
   </div>
 
+
+  <!-- SETTINGS: SYSTEM CONFIG -->
+  <div class="view" id="view-system-config">
+    <div id="syscfg-content"></div>
+  </div>
+
   <!-- SETTINGS: IMPORT / EXPORT -->
   <div class="view" id="view-settings-import-export">
     <div id="ie-content"></div>
+  </div>
+
+  <!-- SETTINGS: AUDIT LOGS -->
+  <div class="view" id="view-settings-logs">
+    <div id="sl-content"></div>
+  </div>
+
+  <!-- VENDOR MANAGEMENT VIEWS -->
+  <div class="view" id="view-vendor-registry">
+    <div id="vr-content"></div>
+  </div>
+  <div class="view" id="view-vendor-engagement">
+    <div id="ve-content"></div>
+  </div>
+  <div class="view" id="view-vendor-findings">
+    <div id="vf-content"></div>
+  </div>
+  <div class="view" id="view-vendor-appmap">
+    <div id="vam-content"></div>
   </div>
 
 
@@ -2380,6 +2690,21 @@ body{
 </div>
 
 <!-- DECOMMISSION CONFIRM MODAL -->
+<!-- VENDOR MODAL -->
+<div class="vm-modal-overlay" id="vm-modal-overlay">
+  <div class="vm-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="vm-modal-title" id="vm-modal-title">Vendor</div>
+      <button class="vm-btn vm-btn-ghost" style="padding:6px 12px" onclick="document.getElementById('vm-modal-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div id="vm-modal-body"></div>
+    <div class="vm-modal-footer">
+      <button class="vm-btn vm-btn-ghost" onclick="document.getElementById('vm-modal-overlay').classList.remove('open')">Cancel</button>
+      <button class="vm-btn vm-btn-primary" id="vm-modal-save" onclick="_vmModalSave()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-decomm" style="display:none">
   <div class="modal" style="width:480px">
     <div class="modal-title">
@@ -2392,6 +2717,20 @@ body{
     <div class="modal-actions">
       <button class="btn-cancel" id="modal-decomm-cancel">ยกเลิก</button>
       <button class="btn-submit" id="modal-decomm-confirm" style="background:var(--red);color:#fff">🔴 ยืนยัน Decommission</button>
+    </div>
+  </div>
+</div>
+<!-- ── RESTORE MODAL ──────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-restore" style="display:none">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">
+      <span>🔓 ยืนยันการ Restore App</span>
+      <button class="modal-close" id="modal-restore-close">✕</button>
+    </div>
+    <div id="restore-body" style="padding:8px 0"><!-- filled by JS --></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-restore-cancel">ยกเลิก</button>
+      <button class="btn-submit" id="modal-restore-confirm" style="background:var(--green);color:#fff">🔓 ยืนยัน Restore</button>
     </div>
   </div>
 </div>
@@ -2929,6 +3268,212 @@ document.getElementById('app-version-sub').textContent = `${APP_CONFIG.subtitle}
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 // ─── FULL STACK MODE — API CONFIG ─────────────────────────────────────────────
 const API_BASE    = '';          // empty = same origin, or set e.g. 'http://localhost:8000'
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTH SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Menu permission map: key → list of data-view values it grants access to
+const MENU_PERMISSIONS = {
+  'dashboard':    ['dashboard','portfolio','executive','financial'],
+  'inventory':    ['inventory','app-insight'],
+  'architecture': ['mpx2','ea-landscape','capability','standards','techdebt'],
+  'planning':     ['roadmap','lifecycle','ppm-wave','ppm-dependency','ppm-resource','ppm-assessment'],
+  'analytics':    ['financial','executive'],
+  'vendor':       ['vendor-registry','vendor-engagement','vendor-findings','vendor-appmap'],
+  'asset':        ['asset-inventory','asset-hardware','asset-network','asset-security','asset-endpoint','asset-analytics'],
+  'ops':          ['ops-platform','ops-release','ops-risk','ops-support'],
+  'audit':        ['settings-logs'],
+  'config':       ['system-config','settings-import-export'],
+};
+
+// ── Token helpers ─────────────────────────────────────────────────────────────
+function _authGetToken(){ return localStorage.getItem('mpx_token'); }
+function _authGetUser(){
+  try{
+    const user = JSON.parse(localStorage.getItem('mpx_user')||'null');
+    if(!user) return null;
+    // Backfill username from JWT token if missing (older sessions)
+    if(!user.username){
+      const token = _authGetToken();
+      if(token){
+        const payload = _authDecodePayload(token);
+        if(payload?.sub) user.username = payload.sub;
+      }
+    }
+    return user;
+  }
+  catch(e){ return null; }
+}
+
+function _authDecodePayload(token){
+  try{
+    const b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(atob(b64));
+  }catch(e){ return null; }
+}
+
+function _authIsTokenValid(){
+  const token = _authGetToken();
+  if(!token) return false;
+  const payload = _authDecodePayload(token);
+  if(!payload) return false;
+  return payload.exp > Math.floor(Date.now()/1000);
+}
+
+// ── Show / hide login overlay ─────────────────────────────────────────────────
+function _authShowLogin(){
+  document.getElementById('auth-login-overlay').style.display='flex';
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('topbar').style.display='none';
+  setTimeout(()=>document.getElementById('auth-username').focus(), 100);
+}
+
+function _authShowApp(){
+  document.getElementById('auth-login-overlay').style.display='none';
+  document.getElementById('app-shell').style.display='';
+  document.getElementById('topbar').style.display='';
+}
+
+// ── Login flow ────────────────────────────────────────────────────────────────
+async function _authDoLogin(){
+  const username = (document.getElementById('auth-username').value||'').trim();
+  const password = document.getElementById('auth-password').value||'';
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-submit-btn');
+
+  errEl.style.display='none';
+  if(!username || !password){
+    errEl.textContent='Please enter username and password'; errEl.style.display='block'; return;
+  }
+  btn.disabled=true; btn.textContent='Signing in...';
+
+  try{
+    const res = await fetch('/api/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if(!res.ok){ throw new Error(data.detail||'Login failed'); }
+
+    // Store token + user info
+    localStorage.setItem('mpx_token', data.token);
+    localStorage.setItem('mpx_user', JSON.stringify(data.user));
+
+    // Reload page → _authBoot() will handle show app + navigate to dashboard
+    window.location.href = '/';
+
+  }catch(e){
+    errEl.textContent = e.message||'Login failed'; errEl.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='Sign In';
+  }
+}
+
+// Enter key on password field
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('auth-password')?.addEventListener('keydown', e=>{
+    if(e.key==='Enter') _authDoLogin();
+  });
+  document.getElementById('auth-username')?.addEventListener('keydown', e=>{
+    if(e.key==='Enter') document.getElementById('auth-password')?.focus();
+  });
+});
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+async function _authLogout(){
+  try{
+    const token = _authGetToken();
+    if(token) await fetch('/api/auth/logout',{method:'POST',headers:{Authorization:'Bearer '+token}});
+  }catch(e){}
+  localStorage.removeItem('mpx_token');
+  localStorage.removeItem('mpx_user');
+  showToast('Logged out', 'info');
+  setTimeout(()=>{
+    document.getElementById('auth-password').value='';
+    document.getElementById('auth-username').value='';
+    _authShowLogin();
+  }, 600);
+}
+
+// ── Apply user info to topbar chip ────────────────────────────────────────────
+function _authApplyUserUI(user){
+  if(!user) return;
+  const chip = document.getElementById('auth-user-chip');
+  chip.style.display='flex';
+  document.getElementById('auth-display-name').textContent = user.display_name||user.username||'User';
+  document.getElementById('auth-role-tag').textContent = (user.roles||['viewer']).join(', ');
+  const firstLetter = (user.display_name||'U')[0].toUpperCase();
+  document.getElementById('auth-avatar').textContent = firstLetter;
+}
+
+// ── Apply menu visibility based on user menus ─────────────────────────────────
+function _authApplyMenuVisibility(userMenus){
+  const isAdmin = userMenus.includes('*');
+  const allowedViews = new Set();
+  if(isAdmin){
+    // Admin sees everything
+    document.querySelectorAll('[data-view]').forEach(el=>el.style.display='');
+    return;
+  }
+  // Expand menu keys to view names
+  (userMenus||[]).forEach(key=>{
+    const views = MENU_PERMISSIONS[key]||[];
+    views.forEach(v=>allowedViews.add(v));
+  });
+  // Show/hide sidebar items
+  document.querySelectorAll('.sb-item[data-view]').forEach(el=>{
+    const view = el.dataset.view;
+    el.style.display = allowedViews.has(view) ? '' : 'none';
+  });
+  // Hide section labels for empty sections
+  document.querySelectorAll('.sb-section').forEach(section=>{
+    const items = section.querySelectorAll('.sb-item[data-view]');
+    const anyVisible = [...items].some(i=>i.style.display!=='none');
+    section.style.display = anyVisible ? '' : 'none';
+  });
+}
+
+// ── Guard: check auth on every renderView call ────────────────────────────────
+function _authCheckBeforeRender(view){
+  if(!_authIsTokenValid()){
+    localStorage.removeItem('mpx_token');
+    localStorage.removeItem('mpx_user');
+    _authShowLogin();
+    return false;
+  }
+  // Check if user can access this view
+  const user = _authGetUser();
+  if(!user) return false;
+  const menus = user.menus||[];
+  if(menus.includes('*')) return true; // admin
+  // find which menu key grants access
+  const allowedViews = new Set();
+  menus.forEach(key=>(MENU_PERMISSIONS[key]||[]).forEach(v=>allowedViews.add(v)));
+  if(!allowedViews.has(view)){
+    showToast('Access denied — you do not have permission to view this section', 'error');
+    return false;
+  }
+  return true;
+}
+
+// ── Boot: check existing token on page load ───────────────────────────────────
+async function _authBoot(){
+  if(_authIsTokenValid()){
+    const user = _authGetUser();
+    _authApplyUserUI(user);
+    _authApplyMenuVisibility(user?.menus||[]);
+    _authShowApp();
+    // Load data then go to dashboard
+    await loadAppsFromAPI(false).catch(()=>{});
+    navigate('dashboard');
+  } else {
+    _authShowLogin();
+  }
+}
+
+
 const API_MODE    = true;        // true = call FastAPI backend
 
 // In-memory cache (populated from API on load)
@@ -2995,29 +3540,49 @@ function setLoading(on){
   el.style.display = on ? 'flex' : 'none';
 }
 
-// ── API helpers ───────────────────────────────────────────────────────────────
-async function apiGet(path){
-  const r = await fetch(API_BASE + path);
-  if(!r.ok) throw new Error(`GET ${path} → ${r.status}`);
+// ── API helpers (auth-aware) ───────────────────────────────────────────────────
+function _authHeaders(extra={}){
+  const token = localStorage.getItem('mpx_token');
+  const h = {'Content-Type':'application/json', ...extra};
+  if(token) h['Authorization'] = 'Bearer ' + token;
+  return h;
+}
+
+async function _apiHandleUnauth(r, path){
+  if(r.status === 401){
+    localStorage.removeItem('mpx_token');
+    localStorage.removeItem('mpx_user');
+    showToast('Session expired — please login again', 'error');
+    setTimeout(()=>_authShowLogin(), 800);
+    throw new Error('Unauthorized');
+  }
+  if(!r.ok){
+    let detail = `${r.status}`;
+    try{ const e=await r.clone().json(); detail = e.detail||detail; }catch(x){}
+    throw new Error(detail);
+  }
   return r.json();
+}
+
+async function apiGet(path){
+  const r = await fetch(API_BASE + path, {headers: _authHeaders()});
+  return _apiHandleUnauth(r, path);
 }
 
 async function apiPost(path, body){
   const r = await fetch(API_BASE + path, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method:'POST', headers: _authHeaders(),
     body: JSON.stringify(body)
   });
-  if(!r.ok){ const e=await r.json(); throw new Error(e.detail||`POST ${path} → ${r.status}`); }
-  return r.json();
+  return _apiHandleUnauth(r, path);
 }
 
 async function apiPut(path, body){
   const r = await fetch(API_BASE + path, {
-    method:'PUT', headers:{'Content-Type':'application/json'},
+    method:'PUT', headers: _authHeaders(),
     body: JSON.stringify(body)
   });
-  if(!r.ok){ const e=await r.json(); throw new Error(e.detail||`PUT ${path} → ${r.status}`); }
-  return r.json();
+  return _apiHandleUnauth(r, path);
 }
 
 // ── Map API field names → frontend field names ─────────────────────────────
@@ -3124,7 +3689,7 @@ async function loadAppsFromAPI(showDecomm=false){
     // Update version + branding from API config
     try {
       const cfg = await apiGet('/api/version');
-      document.title = cfg.page_title || cfg.title || 'MPX AppPort';
+      document.title = cfg.page_title || cfg.title || 'MPX Studio';
       const sub = document.getElementById('app-version-sub');
       if(sub) sub.textContent = cfg.logo_sub || `EA PORTFOLIO ${cfg.version}`;
       const lt = document.querySelector('.logo-title');
@@ -3305,7 +3870,8 @@ apps.forEach(a => {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const hc = s => s>=80?'var(--green)':s>=60?'var(--yellow)':'var(--red)';
 const bcgColor = {Invest:'var(--invest)',Grow:'var(--blue)',Tolerate:'var(--tolerate)',Retire:'var(--retire)'};
-const statusColor = {Active:'var(--green)',"Phase-out":'var(--yellow)',"To-retire":'var(--red)',Planned:'var(--accent)'};
+// BUG#3 FIX: add Decommissioned to global statusColor map (was missing — other views relied on undefined fallback)
+const statusColor = {Active:'var(--green)',"Phase-out":'var(--yellow)',"To-retire":'var(--red)',Planned:'var(--accent)',Decommissioned:'var(--muted)'};
 const getDomains = () => [...new Set(apps.map(a=>a.domain))].sort();
 
 const badge = (l,c) => `<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${l}</span>`;
@@ -3403,13 +3969,20 @@ const VIEW_META = {
   'ea-landscape':  {label:'EA Landscape',         group:'Architecture',      icon:'🏛'},
   'mpx2':          {label:'MPX EA Blueprint',       group:'Architecture',      icon:'🗺'},
   'app-insight':   {label:'App Insight',           group:'Overview',          icon:'🔬'},
+  'vendor-registry':   {label:'Vendor Registry',     group:'Vendor Management', icon:'🏢'},
+  'vendor-engagement': {label:'Engagement Tracker',  group:'Vendor Management', icon:'📋'},
+  'vendor-findings':   {label:'Findings Dashboard',  group:'Vendor Management', icon:'🎯'},
+  'vendor-appmap':     {label:'App Coverage Map',    group:'Vendor Management', icon:'🗺'},
+  'system-config':          {label:'System Config',   group:'Settings',       icon:'⚙'},
   'settings-import-export': {label:'Import / Export', group:'Settings',       icon:'⇅'},
+  'settings-logs':          {label:'Audit Logs',      group:'Settings',       icon:'🪵'},
   'asset-inventory': {label:'Asset Inventory',    group:'Asset Management',  icon:'🖥'},
   'asset-hardware':  {label:'Hardware',            group:'Asset Management',  icon:'⚙'},
   'asset-security':  {label:'Security Equipment',  group:'Asset Management',  icon:'🛡'},
   'asset-network':   {label:'Network Equipment',   group:'Asset Management',  icon:'🌐'},
   'asset-endpoint':  {label:'Endpoint Security',   group:'Asset Management',  icon:'💻'},
   'asset-analytics': {label:'Asset Analytics',     group:'Asset Analytics',   icon:'📊'},
+  'system-config':   {label:'System Config',       group:'Settings',          icon:'⚙'},
 };
 
 function navigate(v){
@@ -3485,6 +4058,7 @@ document.querySelectorAll('.sb-item[data-view]').forEach(btn => {
 // ─── VIEWS ─────────────────────────────────────────────────────────────────────
 
 function renderView(v){
+  if(typeof _authCheckBeforeRender === 'function' && !_authCheckBeforeRender(v)) return;
   const map = {
     dashboard:renderDashboard, portfolio:renderPortfolio, roadmap:renderRoadmap,
     lifecycle:renderLifecycle, techdebt:renderTechDebt, capability:renderCapability,
@@ -3496,7 +4070,13 @@ function renderView(v){
     'ea-landscape':renderEALandscape,
     'mpx2':renderMPX2,
     'app-insight':renderAppInsight,
+    'vendor-registry':renderVendorRegistry,
+    'vendor-engagement':renderVendorEngagement,
+    'vendor-findings':renderVendorFindings,
+    'vendor-appmap':renderVendorAppMap,
+    'system-config':renderSystemConfig,
     'settings-import-export':renderSettingsImportExport,
+    'settings-logs':renderSettingsLogs,
     'asset-inventory':renderAssetInventory,
     'asset-hardware':renderAssetHardware,
     'asset-security':renderAssetSecurity,
@@ -5439,7 +6019,66 @@ function renderInsightReport(appId){
         </div>`).join('')}
     </div>
 
+  <!-- Security Vendor Engagements -->
+  <div class="insight-card" id="insight-vendor-section-${a.id}">
+    <div class="insight-card-title">🔐 Security Vendor Engagements</div>
+    <div id="insight-vendor-body-${a.id}" style="color:var(--dim);font-size:12px">⏳ Loading…</div>
+  </div>
+
   </div>`;
+
+  // Load vendor engagements async (non-blocking)
+  apiGet(`/api/apps/${a.id}/engagements`).then(engs=>{
+    const vb = document.getElementById(`insight-vendor-body-${a.id}`);
+    if(!vb) return;
+    if(!engs||!engs.length){
+      vb.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 0;color:var(--red)">
+          <span style="font-size:20px">⚠️</span>
+          <div><div style="font-weight:700;font-size:13px">ยังไม่มี Security Assessment</div>
+          <div style="font-size:11px;color:var(--dim)">App นี้ยังไม่เคยผ่าน Pentest, VA หรือ SAST — ควรวางแผน engagement</div></div>
+        </div>
+        <div style="margin-top:8px">
+          <button class="vm-btn vm-btn-primary" style="font-size:11px;padding:5px 14px"
+            onclick="_vmEnsureVendors().then(()=>_vmOpenAddEngagement('${a.id}'))">+ Add Engagement for ${a.id}</button>
+        </div>`;
+      return;
+    }
+    const rows = engs.map(e=>`
+      <tr>
+        <td style="font-size:11px;color:var(--dim)">${e.start_date||'-'}</td>
+        <td style="font-weight:700;font-size:12px">${e.type}</td>
+        <td style="font-size:11px">${e.vendor_name||e.vendor_id}</td>
+        <td>${_vmEngBadge(e.status)}</td>
+        <td>${_vmFindings(e)}</td>
+        <td>${_vmRemBadge(e.remediation_status)}</td>
+        <td style="font-size:11px;color:var(--accent)">${e.report_ref||'—'}</td>
+        <td style="font-size:11px;color:var(--dim)">${_vmScore(e.score)}</td>
+        <td><button class="vm-btn vm-btn-ghost" style="padding:2px 7px;font-size:10px"
+              onclick="_vmEnsureVendors().then(()=>_vmOpenEditEngagement('${e.engagement_id}'))">✏️</button></td>
+      </tr>`).join('');
+    const openC = engs.reduce((s,e)=>s+(e.remediation_status!=='Closed'?e.critical:0),0);
+    const openH = engs.reduce((s,e)=>s+(e.remediation_status!=='Closed'?e.high:0),0);
+    vb.innerHTML = `
+      ${openC>0||openH>0?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:rgba(255,71,87,.08);border-radius:8px;border:1px solid rgba(255,71,87,.25)">
+        <span style="font-size:16px">🚨</span>
+        <span style="font-size:12px;font-weight:700;color:var(--red)">Open findings: <span class="vm-find-chip vm-find-c">C:${openC}</span> <span class="vm-find-chip vm-find-h">H:${openH}</span></span>
+      </div>`:''}
+      <div class="vm-table-wrap">
+        <table class="vm-table">
+          <thead><tr><th>Date</th><th>Type</th><th>Vendor</th><th>Status</th><th>Findings</th><th>Remediation</th><th>Report</th><th>Score</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;justify-content:space-between">
+        <button class="vm-btn vm-btn-primary" style="font-size:11px;padding:5px 14px"
+          onclick="_vmEnsureVendors().then(()=>_vmOpenAddEngagement('${engs[0]?.app_id||''}'))">+ Add Engagement</button>
+        <button class="vm-btn vm-btn-ghost" style="font-size:11px;padding:5px 12px" onclick="navigate('vendor-engagement')">📋 ดูทั้งหมดใน Engagement Tracker →</button>
+      </div>`;
+  }).catch(()=>{
+    const vb = document.getElementById(`insight-vendor-body-${a.id}`);
+    if(vb) vb.innerHTML='<span style="color:var(--dim);font-size:12px">ไม่สามารถโหลดข้อมูล Vendor ได้</span>';
+  });
 
   // Show Paper Out button now that report is ready
   document.getElementById('btn-paper-out').style.display = 'flex';
@@ -5645,53 +6284,364 @@ function _generateRecommendations(a, findings){
   return recs;
 }
 
-// ─── SETTINGS: IMPORT / EXPORT ────────────────────────────────────────────────
 
-// Column definitions — order matters (matches XLSX columns)
+// ─── SYSTEM CONFIG ─────────────────────────────────────────────────────────────
+async function renderSystemConfig(){
+  const el = document.getElementById('syscfg-content');
+  if(!el) return;
+  el.innerHTML = '<div style="padding:32px;color:var(--muted);text-align:center">⏳ Loading...</div>';
+  try {
+    const currentUser = _authGetUser();
+    const isAdmin = currentUser?.roles?.includes('admin');
+    let userData = null;
+    if(isAdmin){
+      try { userData = await apiGet('/api/auth/users'); } catch(e){}
+    }
+    _syscfgRender(el, currentUser, isAdmin, userData);
+    _syscfgBindEvents(el);
+  } catch(err) {
+    el.innerHTML = `<div style="padding:32px;color:#ff6b6b;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+      <div>Error: ${escapeHTML(err.message)}</div></div>`;
+    console.error('renderSystemConfig error:', err);
+  }
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const _SC_MENU_DEFS = [
+  {key:'dashboard',    label:'Dashboard',    desc:'Dashboard, Portfolio, Executive, Financial', icon:'⬡'},
+  {key:'inventory',    label:'Inventory',    desc:'App Inventory, App Insight',                 icon:'📋'},
+  {key:'architecture', label:'Architecture', desc:'EA Blueprint, Capability, Standards, Tech Debt', icon:'🏛'},
+  {key:'planning',     label:'Planning',     desc:'Roadmap, Lifecycle, Wave/Dependency/Resource/Assessment', icon:'🗺'},
+  {key:'analytics',    label:'Analytics',    desc:'Financial Analytics, Executive View',        icon:'📊'},
+  {key:'vendor',       label:'Vendor Mgmt',  desc:'Vendor Registry, Engagement, Findings, Coverage Map', icon:'🤝'},
+  {key:'asset',        label:'Asset Mgmt',   desc:'Asset Inventory, Hardware, Network, Security, Endpoint', icon:'🖥'},
+  {key:'ops',          label:'Operations',   desc:'Platform Ops, Release, Risk, Support',       icon:'⚙'},
+  {key:'audit',        label:'Audit Logs',   desc:'Audit & Operation Logs',                     icon:'🪵'},
+  {key:'config',       label:'System Config',desc:'System Config, Import/Export',               icon:'🔧'},
+];
+const _SC_ROLE_DEFS = [
+  {key:'admin',  label:'Admin',  color:'#ff6b35'},
+  {key:'editor', label:'Editor', color:'#0066cc'},
+  {key:'viewer', label:'Viewer', color:'#00b478'},
+  {key:'vendor', label:'Vendor', color:'#7b61ff'},
+];
+const _SC_ROLE_COLOR = Object.fromEntries(_SC_ROLE_DEFS.map(r=>[r.key,r.color]));
+const _SC_MENU_LABEL = Object.fromEntries(_SC_MENU_DEFS.map(m=>[m.key,m.label]));
+
+// Global user store (filled on render, used by edit modal)
+let _syscfgUsersMap = {};
+
+// ── Main render (pure HTML — no inline onclick) ───────────────────────────────
+function _syscfgRender(el, currentUser, isAdmin, userData){
+  _syscfgUsersMap = {};
+
+  // ── Users table ─────────────────────────────────────────────────────────────
+  let usersHtml = '';
+  if(isAdmin && userData?.users){
+    userData.users.forEach(u => { _syscfgUsersMap[u.username] = u; });
+
+    const rows = userData.users.map(u => {
+      const isSelf   = (u.username === (currentUser?.username||''));
+      const isActive = u.active !== false;
+
+      const menuChips = (u.menus||[]).includes('*')
+        ? '<span style="color:#ff6b35;font-weight:700;font-size:12px">★ All</span>'
+        : (u.menus||[]).map(m => {
+            const lbl = _SC_MENU_LABEL[m]||m;
+            return '<span style="background:var(--card2);border:1px solid var(--border2);'
+                 + 'border-radius:5px;padding:1px 7px;font-size:11px;display:inline-block;margin:1px 2px">'
+                 + escapeHTML(lbl) + '</span>';
+          }).join('');
+
+      const roleChips = (u.roles||[]).map(r => {
+        const c = _SC_ROLE_COLOR[r]||'var(--muted)';
+        return '<span style="background:' + c + '22;color:' + c + ';border:1px solid ' + c + '55;'
+             + 'border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600">'
+             + escapeHTML(r) + '</span>';
+      }).join(' ');
+
+      const actionCell = isSelf
+        ? '<span style="color:var(--muted);font-size:11px">(you)</span>'
+        : '<button class="syscfg-edit-btn" data-uname="' + escapeHTML(u.username) + '" style="'
+          + 'background:rgba(0,102,204,.15);border:1px solid rgba(0,102,204,.35);'
+          + 'border-radius:7px;padding:5px 12px;color:var(--accent);font-size:12px;cursor:pointer">✏️ Edit</button>';
+
+      return '<tr style="border-bottom:1px solid var(--border2);'+(isActive?'':'opacity:.45')+'">'
+           + '<td style="padding:10px 12px">'
+           +   '<div style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + escapeHTML(u.username) + '</div>'
+           +   '<div style="font-size:11px;color:var(--muted)">' + escapeHTML(u.email||'') + '</div>'
+           + '</td>'
+           + '<td style="padding:10px 12px;font-size:13px">' + escapeHTML(u.display_name||'') + '</td>'
+           + '<td style="padding:10px 12px">' + roleChips + '</td>'
+           + '<td style="padding:10px 12px;line-height:1.8">' + menuChips + '</td>'
+           + '<td style="padding:10px 12px;text-align:center;font-size:12px">' + (isActive?'✅ Active':'❌ Off') + '</td>'
+           + '<td style="padding:10px 12px;text-align:center">' + actionCell + '</td>'
+           + '</tr>';
+    }).join('');
+
+    usersHtml = '<div class="card" style="margin-top:24px">'
+      + '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between">'
+      +   '<span>👥 User Management</span>'
+      +   '<span style="font-size:11px;color:var(--muted);font-weight:400">'
+      +     userData.users.length + ' users · Token: ' + userData.token_expire_minutes + ' min'
+      +   '</span>'
+      + '</div>'
+      + '<div style="overflow-x:auto">'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="border-bottom:1px solid var(--border2);background:var(--card2)">'
+      + '<th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px">USERNAME</th>'
+      + '<th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px">DISPLAY NAME</th>'
+      + '<th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px">ROLE</th>'
+      + '<th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px">MENU ACCESS</th>'
+      + '<th style="text-align:center;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px">STATUS</th>'
+      + '<th style="text-align:center;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px">ACTION</th>'
+      + '</tr></thead>'
+      + '<tbody id="syscfg-tbody">' + rows + '</tbody>'
+      + '</table></div>'
+      + '<div style="padding:12px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border2)">'
+      + '💡 Change password: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">python setup_users.py passwd &lt;username&gt;</code>'
+      + '&nbsp;&nbsp;Add user: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">python setup_users.py add &lt;username&gt; &lt;password&gt; &lt;role&gt;</code>'
+      + '</div></div>';
+
+  } else if(!isAdmin){
+    usersHtml = '<div class="card" style="margin-top:24px;padding:24px;text-align:center;color:var(--muted)">'
+               + '<div style="font-size:32px;margin-bottom:8px">🔒</div>User list is visible to Admin only</div>';
+  }
+
+  // ── Current session card ────────────────────────────────────────────────────
+  const myMenusHtml = (currentUser?.menus||[]).includes('*')
+    ? '<span style="color:#ff6b35;font-weight:700">★ All Menus</span>'
+    : (currentUser?.menus||[]).map(m =>
+        '<span style="background:var(--card2);border:1px solid var(--border2);'
+        + 'border-radius:5px;padding:1px 6px;font-size:11px;margin:1px;display:inline-block">'
+        + escapeHTML(_SC_MENU_LABEL[m]||m) + '</span>'
+      ).join('');
+
+  const myRolesHtml = (currentUser?.roles||[]).map(r =>
+    '<span style="background:' + (_SC_ROLE_COLOR[r]||'var(--card2)') + ';color:#fff;'
+    + 'border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600">' + escapeHTML(r) + '</span>'
+  ).join(' ');
+
+  el.innerHTML =
+    '<div class="page-header"><h1 class="page-title">⚙ System Config</h1></div>'
+    + '<div style="max-width:1060px;margin:0 auto;padding:0 24px 40px">'
+
+    // Current session
+    + '<div class="card"><div class="card-title">👤 Current Session</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-top:4px">'
+    + '<div><div style="color:var(--muted);font-size:11px;margin-bottom:4px;letter-spacing:.5px">USERNAME</div>'
+    +   '<div style="font-family:var(--mono);font-size:14px;color:var(--accent)">' + escapeHTML(currentUser?.username||'-') + '</div></div>'
+    + '<div><div style="color:var(--muted);font-size:11px;margin-bottom:4px;letter-spacing:.5px">DISPLAY NAME</div>'
+    +   '<div style="font-size:14px">' + escapeHTML(currentUser?.display_name||'-') + '</div></div>'
+    + '<div><div style="color:var(--muted);font-size:11px;margin-bottom:4px;letter-spacing:.5px">ROLE</div>'
+    +   '<div>' + myRolesHtml + '</div></div>'
+    + '<div><div style="color:var(--muted);font-size:11px;margin-bottom:4px;letter-spacing:.5px">MENU ACCESS</div>'
+    +   '<div style="font-size:12px">' + myMenusHtml + '</div></div>'
+    + '</div></div>'
+
+    + usersHtml
+
+    // Config files
+    + '<div class="card" style="margin-top:24px"><div class="card-title">📁 Configuration Files</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">'
+    + '<div style="background:var(--card2);border-radius:8px;padding:14px">'
+    +   '<div style="font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:6px">mpx-studio.config.json</div>'
+    +   '<div style="color:var(--muted);font-size:12px">App config: version, badge layout, EA structure</div></div>'
+    + '<div style="background:var(--card2);border-radius:8px;padding:14px">'
+    +   '<div style="font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:6px">users.config.json</div>'
+    +   '<div style="color:var(--muted);font-size:12px">Users, hashed passwords, roles, menu permissions</div></div>'
+    + '</div></div>'
+
+    + '</div>'  // end max-width wrapper
+
+    // Edit modal (hidden)
+    + '<div id="syscfg-overlay" style="display:none;position:fixed;inset:0;z-index:8000;'
+    +   'background:rgba(0,0,0,.65);backdrop-filter:blur(4px);align-items:center;justify-content:center">'
+    +   '<div id="syscfg-modal" style="background:var(--card);border:1px solid var(--border2);border-radius:16px;'
+    +     'width:560px;max-width:94vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6)">'
+    +     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border2);'
+    +       'display:flex;align-items:center;justify-content:space-between">'
+    +       '<div style="font-size:16px;font-weight:700" id="syscfg-modal-title">✏️ Edit User</div>'
+    +       '<button id="syscfg-modal-close" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:0 4px">×</button>'
+    +     '</div>'
+    +     '<div id="syscfg-modal-body" style="padding:20px 24px 24px"></div>'
+    +   '</div>'
+    + '</div>';
+}
+
+// ── Event binding (called after innerHTML is set) ─────────────────────────────
+function _syscfgBindEvents(el){
+  // Edit buttons — event delegation on the container
+  el.addEventListener('click', function(e){
+    const btn = e.target.closest('.syscfg-edit-btn');
+    if(btn){
+      const uname = btn.getAttribute('data-uname');
+      const user  = _syscfgUsersMap[uname];
+      if(user) _syscfgOpenModal(user);
+    }
+    // Close overlay on backdrop click
+    const overlay = document.getElementById('syscfg-overlay');
+    if(overlay && e.target === overlay) _syscfgCloseModal();
+  });
+
+  // Close button
+  document.getElementById('syscfg-modal-close')?.addEventListener('click', _syscfgCloseModal);
+}
+
+// ── Modal open ────────────────────────────────────────────────────────────────
+let _syscfgEditTarget = null;
+
+function _syscfgOpenModal(user){
+  _syscfgEditTarget = user;
+  document.getElementById('syscfg-modal-title').textContent = '✏️ Edit — ' + (user.display_name||user.username);
+
+  // Menu checkboxes
+  const menuBoxesHtml = _SC_MENU_DEFS.map(m => {
+    const isChecked = (user.menus||[]).includes('*') || (user.menus||[]).includes(m.key);
+    const chkId = 'sc-chk-' + m.key;
+    return '<label id="sc-lbl-' + m.key + '" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;'
+      + 'border-radius:8px;cursor:pointer;'
+      + 'border:1px solid ' + (isChecked ? 'var(--accent)' : 'var(--border2)') + ';'
+      + 'background:' + (isChecked ? 'rgba(0,102,204,.08)' : 'var(--card2)') + '">'
+      + '<input type="checkbox" id="' + chkId + '" data-mkey="' + m.key + '" class="sc-menu-chk"'
+      + (isChecked ? ' checked' : '') + ' style="width:15px;height:15px;margin-top:2px;cursor:pointer;accent-color:var(--accent)">'
+      + '<div><div style="font-size:13px;font-weight:600">' + m.icon + ' ' + escapeHTML(m.label) + '</div>'
+      + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + escapeHTML(m.desc) + '</div></div>'
+      + '</label>';
+  }).join('');
+
+  // Role checkboxes
+  const roleBoxesHtml = _SC_ROLE_DEFS.map(r => {
+    const isChecked = (user.roles||[]).includes(r.key);
+    return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;'
+      + 'border-radius:7px;border:1px solid ' + (isChecked ? r.color+'88' : 'var(--border2)') + ';'
+      + 'background:' + (isChecked ? r.color+'18' : 'var(--card2)') + '">'
+      + '<input type="checkbox" id="sc-role-' + r.key + '" data-rkey="' + r.key + '" class="sc-role-chk"'
+      + (isChecked ? ' checked' : '') + ' style="accent-color:' + r.color + ';cursor:pointer">'
+      + '<span style="font-size:13px;color:' + r.color + ';font-weight:600">' + escapeHTML(r.label) + '</span>'
+      + '</label>';
+  }).join('');
+
+  const isActive = user.active !== false;
+  document.getElementById('syscfg-modal-body').innerHTML =
+    '<div style="margin-bottom:20px">'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;letter-spacing:.5px;font-weight:600">ACCOUNT STATUS</div>'
+    + '<label style="display:flex;align-items:center;gap:10px;cursor:pointer">'
+    +   '<input type="checkbox" id="sc-active"' + (isActive?' checked':'') + ' style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">'
+    +   '<span style="font-size:13px">Active (uncheck = ปิดการ login)</span>'
+    + '</label></div>'
+
+    + '<div style="margin-bottom:20px">'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;letter-spacing:.5px;font-weight:600">ROLES</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">' + roleBoxesHtml + '</div></div>'
+
+    + '<div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;letter-spacing:.5px;font-weight:600">MENU ACCESS</div>'
+    + '<div id="sc-menu-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + menuBoxesHtml + '</div></div>'
+
+    + '<div style="display:flex;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid var(--border2)">'
+    + '<button id="sc-cancel-btn" style="flex:1;padding:10px;border-radius:8px;background:var(--card2);'
+    +   'border:1px solid var(--border2);color:var(--muted);font-size:13px;cursor:pointer">Cancel</button>'
+    + '<button id="sc-save-btn" style="flex:2;padding:10px;border-radius:8px;background:var(--accent);'
+    +   'border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer">💾 Save Changes</button>'
+    + '</div>';
+
+  // Bind modal events
+  document.getElementById('sc-cancel-btn').addEventListener('click', _syscfgCloseModal);
+  document.getElementById('sc-save-btn').addEventListener('click', _syscfgSaveUser);
+
+  // Menu checkbox visual toggle
+  document.querySelectorAll('.sc-menu-chk').forEach(chk => {
+    chk.addEventListener('change', function(){
+      const key = this.getAttribute('data-mkey');
+      const lbl = document.getElementById('sc-lbl-' + key);
+      if(lbl){
+        lbl.style.border = '1px solid ' + (this.checked ? 'var(--accent)' : 'var(--border2)');
+        lbl.style.background = this.checked ? 'rgba(0,102,204,.08)' : 'var(--card2)';
+      }
+    });
+  });
+
+  // Show overlay
+  const overlay = document.getElementById('syscfg-overlay');
+  overlay.style.display = 'flex';
+}
+
+// ── Modal close ───────────────────────────────────────────────────────────────
+function _syscfgCloseModal(){
+  const overlay = document.getElementById('syscfg-overlay');
+  if(overlay) overlay.style.display = 'none';
+  _syscfgEditTarget = null;
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+async function _syscfgSaveUser(){
+  if(!_syscfgEditTarget) return;
+  const btn = document.getElementById('sc-save-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+
+  const menus  = [...document.querySelectorAll('.sc-menu-chk:checked')].map(c=>c.getAttribute('data-mkey'));
+  const roles  = [...document.querySelectorAll('.sc-role-chk:checked')].map(c=>c.getAttribute('data-rkey'));
+  const active = document.getElementById('sc-active')?.checked ?? true;
+
+  try {
+    await apiPut('/api/auth/users/' + encodeURIComponent(_syscfgEditTarget.username), {menus, roles, active});
+    showToast('✅ User "' + _syscfgEditTarget.username + '" updated', 'success');
+    _syscfgCloseModal();
+    await renderSystemConfig(); // refresh
+  } catch(e){
+    showToast('❌ ' + (e.message||'Save failed'), 'error');
+    if(btn){ btn.disabled = false; btn.textContent = '💾 Save Changes'; }
+  }
+}
+
+
+
+// ─── Import/Export Column Schema ──────────────────────────────────────────────
 const IE_COLS = [
-  {key:'id',            label:'App ID',             type:'str'},
-  {key:'name',          label:'App Name',            type:'str'},
-  {key:'domain',        label:'Domain',              type:'str'},
-  {key:'vendor',        label:'Vendor',              type:'str'},
-  {key:'type',          label:'Type',                type:'str'},
-  {key:'status',        label:'Status',              type:'str'},
-  {key:'bcg',           label:'BCG Quadrant',        type:'str'},
-  {key:'health',        label:'Health Score',        type:'int'},
-  {key:'techDebt',      label:'Tech Debt %',         type:'int'},
-  {key:'age',           label:'Age (Years)',         type:'int'},
-  {key:'tco',           label:'TCO (KTHb)',          type:'int'},
-  {key:'users',         label:'Users',               type:'int'},
-  {key:'criticality',   label:'Criticality',         type:'str'},
-  {key:'dr',            label:'DR',                  type:'bool'},
-  {key:'eol',           label:'End of Life',         type:'str'},
-  {key:'piSpi',         label:'PI/SPI Impact',       type:'bool'},
-  {key:'contractEnd',   label:'Contract End',        type:'str'},
-  {key:'integration',   label:'Integrations',        type:'int'},
-  {key:'stack',         label:'Tech Stack',          type:'arr'},
-  {key:'capability',    label:'Capability',          type:'str'},
-  {key:'strategic',     label:'Strategic Score',     type:'int'},
-  {key:'persons',       label:'Persons',             type:'int'},
-  {key:'srcAvail',      label:'Source Available',    type:'bool'},
-  {key:'serviceHour',   label:'Service Hour',        type:'str'},
-  {key:'maintWindow',   label:'Maint Window',        type:'str'},
-  {key:'lang',          label:'Language',            type:'str'},
-  {key:'os',            label:'OS',                  type:'str'},
-  {key:'db',            label:'Database',            type:'str'},
-  {key:'support',       label:'Support Type',        type:'str'},
-  {key:'owner',         label:'IT Owner',            type:'str'},
-  {key:'bizOwner',      label:'Business App Owner',  type:'str'},
-  {key:'compliance',    label:'Compliance',          type:'arr'},
-  {key:'stream',        label:'Stream',              type:'str'},
-  {key:'approach',      label:'Approach',            type:'str'},
-  {key:'assessStatus',  label:'Assess Status',       type:'str'},
-  {key:'assessDate',    label:'Assess Date',         type:'str'},
-  {key:'wave',          label:'Wave',                type:'int'},
-  {key:'eaGroup',       label:'EA Group',            type:'str'},
-  {key:'eaCategory',    label:'EA Category',         type:'str'},
-  {key:'eaSubCategory', label:'EA Sub-Category',     type:'str'},
+  {key:'id',           label:'App ID',              type:'str',  req:true },
+  {key:'name',         label:'App Name',            type:'str',  req:true },
+  {key:'domain',       label:'Domain',              type:'str',  req:true },
+  {key:'vendor',       label:'Vendor',              type:'str',  req:false},
+  {key:'type',         label:'Type',                type:'str',  req:false},
+  {key:'status',       label:'Status',              type:'str',  req:true },
+  {key:'bcg',          label:'BCG',                 type:'str',  req:false},
+  {key:'health',       label:'Health Score',        type:'int',  req:false},
+  {key:'techDebt',     label:'Tech Debt',           type:'int',  req:false},
+  {key:'age',          label:'Age (years)',         type:'int',  req:false},
+  {key:'tco',          label:'TCO (MB THB)',        type:'int',  req:false},
+  {key:'users',        label:'Users',               type:'int',  req:false},
+  {key:'criticality',  label:'Criticality',         type:'str',  req:false},
+  {key:'dr',           label:'DR',                  type:'bool', req:false},
+  {key:'eol',          label:'EOL',                 type:'str',  req:false},
+  {key:'piSpi',        label:'PI/SPI',              type:'bool', req:false},
+  {key:'contractEnd',  label:'Contract End',        type:'str',  req:false},
+  {key:'integration',  label:'Integration Points',  type:'int',  req:false},
+  {key:'stack',        label:'Tech Stack',          type:'arr',  req:false},
+  {key:'capability',   label:'Capability',          type:'str',  req:false},
+  {key:'strategic',    label:'Strategic Score',     type:'int',  req:false},
+  {key:'persons',      label:'Persons',             type:'int',  req:false},
+  {key:'srcAvail',     label:'Source Available',    type:'bool', req:false},
+  {key:'serviceHour',  label:'Service Hour',        type:'str',  req:false},
+  {key:'maintWindow',  label:'Maint Window',        type:'str',  req:false},
+  {key:'lang',         label:'Language',            type:'str',  req:false},
+  {key:'os',           label:'OS',                  type:'str',  req:false},
+  {key:'db',           label:'Database',            type:'str',  req:false},
+  {key:'support',      label:'Support Type',        type:'str',  req:false},
+  {key:'owner',        label:'IT Owner',            type:'str',  req:false},
+  {key:'bizOwner',     label:'Business App Owner',  type:'str',  req:false},
+  {key:'compliance',   label:'Compliance',          type:'arr',  req:false},
+  {key:'stream',       label:'Stream',              type:'str',  req:false},
+  {key:'approach',     label:'Approach',            type:'str',  req:false},
+  {key:'assessStatus', label:'Assess Status',       type:'str',  req:false},
+  {key:'assessDate',   label:'Assess Date',         type:'str',  req:false},
+  {key:'wave',         label:'Wave',                type:'int',  req:false},
+  {key:'eaGroup',      label:'EA Group',            type:'str',  req:false},
+  {key:'eaCategory',   label:'EA Category',         type:'str',  req:false},
+  {key:'eaSubCategory',label:'EA Sub-Category',     type:'str',  req:false},
 ];
 
-// ── Render page ───────────────────────────────────────────────────────────────
 function renderSettingsImportExport(){
   const el = document.getElementById('ie-content');
   el.innerHTML = `
@@ -5710,7 +6660,7 @@ function renderSettingsImportExport(){
         <div class="ie-action">
           <div class="ie-action-info">
             <div class="ie-action-title">📊 Export All Applications</div>
-            <div class="ie-action-desc">Export ข้อมูลแอปทั้งหมด ${apps.filter(a=>!a.decommissioned).length} รายการ (ไม่รวม Decommissioned) ออกเป็น AppPort_Export.xlsx</div>
+            <div class="ie-action-desc">Export ข้อมูลแอปทั้งหมด ${apps.filter(a=>!a.decommissioned).length} รายการ (ไม่รวม Decommissioned) ออกเป็น MPX-Studio_Export.xlsx</div>
           </div>
           <button class="ie-btn ie-btn-primary" onclick="ieExport(false)">⬇ Export Active</button>
         </div>
@@ -5814,6 +6764,427 @@ function _ieExample(c){
   return ex[c.key] || '—';
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SETTINGS: AUDIT LOGS VIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let _slState = {
+  tab: 'all',       // all | audit | compliance | operation | quickquery
+  category: '',
+  severity: '',
+  event_type: '',
+  resource_id: '',
+  from_ts: '',
+  to_ts: '',
+  limit: 50,
+  offset: 0,
+  total: 0,
+  logs: [],
+  stats: null,
+  qqResult: null,
+  qqSql: '',
+};
+
+// ─── Predefined audit queries ─────────────────────────────────────────────────
+const SL_QUICK_QUERIES = [
+  {
+    title: '🔴 Risk Events (last 30 days)',
+    desc:  'แสดงทุก event ที่มี risk_flags ในช่วง 30 วันล่าสุด',
+    sql:   `SELECT ts, event_type, severity, resource_id, risk_flags, message\nFROM audit_log\nWHERE risk_flags IS NOT NULL AND risk_flags != 'null'\n  AND ts >= date('now','-30 days')\nORDER BY ts DESC\nLIMIT 100`
+  },
+  {
+    title: '📤 Data Exports (PI/SPI)',
+    desc:  'ติดตาม Data Export ที่มี PI/SPI data ทั้งหมด',
+    sql:   `SELECT ts, actor_ip, extra, message\nFROM audit_log\nWHERE event_type = 'DATA_EXPORT'\n  AND risk_flags LIKE '%PI_SPI_DATA_EXPORT%'\nORDER BY ts DESC\nLIMIT 100`
+  },
+  {
+    title: '✏️ App Changes (last 7 days)',
+    desc:  'รายการ App ที่มีการแก้ไขใน 7 วันล่าสุด',
+    sql:   `SELECT ts, resource_id, event_type, severity, message\nFROM audit_log\nWHERE category = 'AUDIT'\n  AND event_type IN ('APP_CREATE','APP_UPDATE','APP_DECOMMISSION')\n  AND ts >= date('now','-7 days')\nORDER BY ts DESC\nLIMIT 100`
+  },
+  {
+    title: '🛡 Compliance Changes',
+    desc:  'App ที่มีการเปลี่ยน Compliance หรือ DR Policy',
+    sql:   `SELECT ts, resource_id, risk_flags, message\nFROM audit_log\nWHERE risk_flags LIKE '%COMPLIANCE_CHANGED%'\n   OR risk_flags LIKE '%DR_POLICY_CHANGED%'\nORDER BY ts DESC\nLIMIT 100`
+  },
+  {
+    title: '📥 Import History',
+    desc:  'ประวัติการ Import ข้อมูล (mode, added, updated)',
+    sql:   `SELECT ts, actor_ip, extra, message\nFROM audit_log\nWHERE event_type = 'DATA_IMPORT'\nORDER BY ts DESC\nLIMIT 50`
+  },
+  {
+    title: '⚠️ Errors & Critical',
+    desc:  'Log ระดับ ERROR และ CRITICAL ทั้งหมด',
+    sql:   `SELECT ts, category, event_type, severity, message, status_code\nFROM audit_log\nWHERE severity IN ('ERROR','CRITICAL')\nORDER BY ts DESC\nLIMIT 100`
+  },
+  {
+    title: '🔵 Mission Critical Decommissions',
+    desc:  'App Mission Critical ที่ถูก Decommission',
+    sql:   `SELECT ts, resource_id, after_state, message\nFROM audit_log\nWHERE event_type = 'APP_DECOMMISSION'\n  AND risk_flags LIKE '%MISSION_CRITICAL_DECOMMISSION%'\nORDER BY ts DESC\nLIMIT 50`
+  },
+  {
+    title: '📊 Daily Operation Summary',
+    desc:  'สรุปจำนวน Request ต่อวัน (Operation log)',
+    sql:   `SELECT substr(ts,1,10) as day,\n       COUNT(*) as total,\n       SUM(CASE WHEN status_code>=400 THEN 1 ELSE 0 END) as errors,\n       ROUND(AVG(duration_ms)) as avg_ms\nFROM audit_log\nWHERE category = 'OPERATION'\nGROUP BY day\nORDER BY day DESC\nLIMIT 30`
+  },
+];
+
+// ─── Main render function ─────────────────────────────────────────────────────
+async function renderSettingsLogs(){
+  const el = document.getElementById('sl-content');
+  if(!el) return;
+
+  // Load stats once
+  if(!_slState.stats){
+    try {
+      _slState.stats = await apiGet('/api/logs/stats');
+    } catch(e){ _slState.stats = {}; }
+  }
+
+  el.innerHTML = _slBuildShell();
+  _slBindTabs();
+  _slRenderTab();
+}
+
+function _slBuildShell(){
+  const s = _slState.stats || {};
+  return `
+<div class="sl-page">
+  <!-- KPI Stats -->
+  <div class="sl-stats-row">
+    <div class="sl-stat">
+      <div class="sl-stat-val">${(s.total||0).toLocaleString()}</div>
+      <div class="sl-stat-label">Total Logs</div>
+    </div>
+    <div class="sl-stat">
+      <div class="sl-stat-val" style="color:var(--red)">${(s.risk_events||0).toLocaleString()}</div>
+      <div class="sl-stat-label">Risk Events</div>
+    </div>
+    <div class="sl-stat">
+      <div class="sl-stat-val" style="color:#ffc107">${(s.warnings_today||0).toLocaleString()}</div>
+      <div class="sl-stat-label">Warnings Today</div>
+    </div>
+    <div class="sl-stat">
+      <div class="sl-stat-val" style="color:var(--accent)">${(s.pi_spi_exports||0).toLocaleString()}</div>
+      <div class="sl-stat-label">PI/SPI Exports</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px">
+    <div class="sl-tabs">
+      <button class="sl-tab${_slState.tab==='all'?' active':''}" data-sl-tab="all">📋 All Logs</button>
+      <button class="sl-tab${_slState.tab==='audit'?' active':''}" data-sl-tab="audit">🔍 Audit</button>
+      <button class="sl-tab${_slState.tab==='compliance'?' active':''}" data-sl-tab="compliance">🛡 Compliance</button>
+      <button class="sl-tab${_slState.tab==='operation'?' active':''}" data-sl-tab="operation">⚙️ Operations</button>
+      <button class="sl-tab${_slState.tab==='quickquery'?' active':''}" data-sl-tab="quickquery">🔎 Quick Queries</button>
+    </div>
+    <div id="sl-tab-body"></div>
+  </div>
+</div>`;
+}
+
+function _slBindTabs(){
+  document.querySelectorAll('[data-sl-tab]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      _slState.tab = btn.dataset.slTab;
+      _slState.offset = 0;
+      // Reset category filter when switching tabs
+      if(_slState.tab !== 'all') _slState.category = '';
+      document.querySelectorAll('[data-sl-tab]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      _slRenderTab();
+    });
+  });
+}
+
+function _slRenderTab(){
+  const body = document.getElementById('sl-tab-body');
+  if(!body) return;
+  if(_slState.tab === 'quickquery'){
+    body.innerHTML = _slBuildQuickQueries();
+    _slBindQQ();
+  } else {
+    // Map tab → category filter
+    const catMap = {audit:'AUDIT', compliance:'COMPLIANCE', operation:'OPERATION', all:''};
+    _slState.category = catMap[_slState.tab] || '';
+    body.innerHTML = _slBuildFilterBar() + `<div id="sl-log-body">⏳ Loading…</div>`;
+    _slBindFilterBar();
+    _slFetchAndRender();
+  }
+}
+
+// ─── Filter bar ───────────────────────────────────────────────────────────────
+function _slBuildFilterBar(){
+  const s = _slState;
+  const catOpts = ['','AUDIT','COMPLIANCE','OPERATION'].map(c=>
+    `<option value="${c}"${s.category===c?' selected':''}>${c||'All Categories'}</option>`).join('');
+  const sevOpts = ['','INFO','WARNING','ERROR','CRITICAL'].map(v=>
+    `<option value="${v}"${s.severity===v?' selected':''}>${v||'All Severities'}</option>`).join('');
+  return `
+<div class="sl-filter-bar">
+  ${s.tab==='all'?`<select id="sl-f-cat">${catOpts}</select>`:''}
+  <select id="sl-f-sev">${sevOpts}</select>
+  <input id="sl-f-etype" placeholder="Event type…" value="${s.event_type}">
+  <input id="sl-f-rid" placeholder="App ID…" value="${s.resource_id}" style="min-width:100px;max-width:120px">
+  <input id="sl-f-from" type="date" value="${s.from_ts}" style="min-width:140px">
+  <input id="sl-f-to" type="date" value="${s.to_ts}" style="min-width:140px">
+  <button class="sl-filter-btn" id="sl-f-apply">🔍 Filter</button>
+  <button class="sl-filter-btn sl-filter-btn-reset" id="sl-f-reset">✕ Reset</button>
+  <button class="sl-filter-btn" style="background:var(--card2);color:var(--dim);margin-left:auto" id="sl-f-refresh">↺ Refresh</button>
+</div>`;
+}
+
+function _slBindFilterBar(){
+  const apply = ()=>{
+    _slState.category  = (document.getElementById('sl-f-cat')?.value) || _slState.category;
+    _slState.severity  = document.getElementById('sl-f-sev')?.value  || '';
+    _slState.event_type= document.getElementById('sl-f-etype')?.value|| '';
+    _slState.resource_id=document.getElementById('sl-f-rid')?.value  || '';
+    _slState.from_ts   = document.getElementById('sl-f-from')?.value || '';
+    _slState.to_ts     = document.getElementById('sl-f-to')?.value   || '';
+    _slState.offset    = 0;
+    _slFetchAndRender();
+  };
+  document.getElementById('sl-f-apply')?.addEventListener('click', apply);
+  document.getElementById('sl-f-refresh')?.addEventListener('click',()=>{
+    _slState.stats = null;
+    renderSettingsLogs();
+  });
+  document.getElementById('sl-f-reset')?.addEventListener('click',()=>{
+    _slState.severity=''; _slState.event_type='';
+    _slState.resource_id=''; _slState.from_ts=''; _slState.to_ts='';
+    _slState.offset=0;
+    if(_slState.tab==='all') _slState.category='';
+    _slFetchAndRender();
+  });
+}
+
+// ─── Fetch & Render log table ─────────────────────────────────────────────────
+async function _slFetchAndRender(){
+  const body = document.getElementById('sl-log-body');
+  if(!body) return;
+  body.innerHTML = '<div style="padding:20px;color:var(--dim)">⏳ กำลังโหลด…</div>';
+
+  const s = _slState;
+  const params = new URLSearchParams();
+  if(s.category)   params.set('category',   s.category);
+  if(s.severity)   params.set('severity',   s.severity);
+  if(s.event_type) params.set('event_type', s.event_type);
+  if(s.resource_id)params.set('resource_id',s.resource_id);
+  if(s.from_ts)    params.set('from_ts',    s.from_ts);
+  if(s.to_ts)      params.set('to_ts',      s.to_ts);
+  params.set('limit',  s.limit);
+  params.set('offset', s.offset);
+
+  try {
+    const res = await apiGet('/api/logs?' + params.toString());
+    _slState.logs  = res.logs || [];
+    _slState.total = res.total || 0;
+    body.innerHTML = _slBuildTable() + _slBuildPagination();
+    _slBindTable();
+    _slBindPagination();
+  } catch(e){
+    body.innerHTML = `<div class="sl-empty">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</div>`;
+  }
+}
+
+function _slBuildTable(){
+  const logs = _slState.logs;
+  if(!logs.length) return '<div class="sl-empty">📭 ไม่มี log ที่ตรงกับเงื่อนไข</div>';
+  const rows = logs.map((l,i)=>{
+    const catClass = 'sl-badge-'+l.category?.toLowerCase();
+    const sevClass = 'sl-badge-'+(l.severity||'info').toLowerCase();
+    const risks = Array.isArray(l.risk_flags) ? l.risk_flags.map(r=>`<span class="sl-risk-chip">${r}</span>`).join('') : '';
+    return `<tr data-sl-idx="${i}">
+      <td title="${l.ts}">${l.ts?.substring(0,19)||'-'}</td>
+      <td><span class="sl-badge ${catClass}">${l.category||'-'}</span></td>
+      <td><span class="sl-badge ${sevClass}">${l.severity||'INFO'}</span></td>
+      <td title="${l.event_type}">${l.event_type||'-'}</td>
+      <td>${l.resource_id||'-'}</td>
+      <td>${l.actor_ip||'-'}</td>
+      <td>${risks || '-'}</td>
+      <td title="${l.message||''}">${(l.message||'').substring(0,60)}${(l.message||'').length>60?'…':''}</td>
+      <td>${l.duration_ms!=null?l.duration_ms+'ms':'-'}</td>
+    </tr>`;
+  }).join('');
+  return `
+<div id="sl-detail-area"></div>
+<div class="sl-table-wrap">
+  <table class="sl-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th><th>Category</th><th>Severity</th><th>Event Type</th>
+        <th>App ID</th><th>Actor IP</th><th>Risk Flags</th><th>Message</th><th>Duration</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>`;
+}
+
+function _slBindTable(){
+  document.querySelectorAll('[data-sl-idx]').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      const idx = parseInt(tr.dataset.slIdx);
+      const log = _slState.logs[idx];
+      if(!log) return;
+      // Toggle detail
+      const area = document.getElementById('sl-detail-area');
+      if(!area) return;
+      const alreadyShown = area.dataset.shownIdx === String(idx);
+      if(alreadyShown){ area.innerHTML=''; area.removeAttribute('data-shown-idx'); return; }
+      area.dataset.shownIdx = String(idx);
+      area.innerHTML = _slBuildDetail(log);
+    });
+  });
+}
+
+function _slBuildDetail(log){
+  const jsonStr = (obj)=> obj ? JSON.stringify(obj, null, 2) : null;
+  const before = jsonStr(log.before_state);
+  const after  = jsonStr(log.after_state);
+  const extra  = jsonStr(log.extra);
+  const risks  = Array.isArray(log.risk_flags) ? log.risk_flags : null;
+  return `
+<div class="sl-detail-panel" style="margin-bottom:12px">
+  <div class="sl-detail-title">🔍 Log Detail — ${log.log_id}</div>
+  <div class="sl-detail-grid">
+    <div class="sl-detail-item"><div class="sl-detail-key">Timestamp</div><div class="sl-detail-val">${log.ts||'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">Category</div><div class="sl-detail-val">${log.category||'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">Event Type</div><div class="sl-detail-val">${log.event_type||'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">Severity</div><div class="sl-detail-val">${log.severity||'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">App ID</div><div class="sl-detail-val">${log.resource_id||'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">Actor IP</div><div class="sl-detail-val">${log.actor_ip||'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">Status Code</div><div class="sl-detail-val">${log.status_code!=null?log.status_code:'-'}</div></div>
+    <div class="sl-detail-item"><div class="sl-detail-key">Duration</div><div class="sl-detail-val">${log.duration_ms!=null?log.duration_ms+'ms':'-'}</div></div>
+  </div>
+  ${risks?`<div style="margin-bottom:10px"><div class="sl-detail-key" style="margin-bottom:4px">Risk Flags</div>${risks.map(r=>`<span class="sl-risk-chip">${r}</span>`).join(' ')}</div>`:''}
+  ${log.message?`<div style="margin-bottom:10px"><div class="sl-detail-key" style="margin-bottom:4px">Message</div><div style="font-size:12px;color:var(--text)">${log.message}</div></div>`:''}
+  ${before?`<div style="margin-bottom:8px"><div class="sl-detail-key" style="margin-bottom:4px">Changes (diff)</div><div class="sl-json-box">${_htmlEsc(before)}</div></div>`:''}
+  ${after&&!before?`<div style="margin-bottom:8px"><div class="sl-detail-key" style="margin-bottom:4px">State</div><div class="sl-json-box">${_htmlEsc(JSON.stringify(after,null,2))}</div></div>`:''}
+  ${extra?`<div><div class="sl-detail-key" style="margin-bottom:4px">Extra</div><div class="sl-json-box">${_htmlEsc(extra)}</div></div>`:''}
+  <div style="margin-top:10px;font-size:11px;color:var(--dim)">คลิกแถวอีกครั้งเพื่อปิด</div>
+</div>`;
+}
+
+function _slBuildPagination(){
+  const {total, limit, offset} = _slState;
+  const page  = Math.floor(offset/limit)+1;
+  const pages = Math.ceil(total/limit) || 1;
+  return `
+<div class="sl-pagination">
+  <button class="sl-page-btn" id="sl-pg-prev" ${offset===0?'disabled':''}>← Prev</button>
+  <span>Page ${page} / ${pages} &nbsp;·&nbsp; ${total.toLocaleString()} records</span>
+  <button class="sl-page-btn" id="sl-pg-next" ${offset+limit>=total?'disabled':''}>Next →</button>
+  <select class="sl-page-btn" id="sl-pg-size" style="cursor:pointer">
+    ${[50,100,200].map(n=>`<option value="${n}"${limit===n?' selected':''}>${n} / page</option>`).join('')}
+  </select>
+</div>`;
+}
+
+function _slBindPagination(){
+  document.getElementById('sl-pg-prev')?.addEventListener('click',()=>{
+    _slState.offset = Math.max(0, _slState.offset - _slState.limit);
+    _slFetchAndRender();
+  });
+  document.getElementById('sl-pg-next')?.addEventListener('click',()=>{
+    _slState.offset += _slState.limit;
+    _slFetchAndRender();
+  });
+  document.getElementById('sl-pg-size')?.addEventListener('change', e=>{
+    _slState.limit  = parseInt(e.target.value);
+    _slState.offset = 0;
+    _slFetchAndRender();
+  });
+}
+
+// ─── Quick Queries ────────────────────────────────────────────────────────────
+function _slBuildQuickQueries(){
+  const cards = SL_QUICK_QUERIES.map((q,i)=>`
+    <div class="sl-qq-card" data-qq-idx="${i}">
+      <div class="sl-qq-title">${q.title}</div>
+      <div class="sl-qq-desc">${q.desc}</div>
+      <div class="sl-qq-sql">${_htmlEsc(q.sql)}</div>
+    </div>`).join('');
+
+  return `
+<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">Predefined Queries — คลิกเพื่อ Run</div>
+<div class="sl-qq-grid">${cards}</div>
+
+<!-- Custom SQL -->
+<div style="margin-top:20px;font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">Custom SQL Query <span style="font-size:11px;color:var(--dim);font-weight:400">(SELECT only • max 500 rows)</span></div>
+<div class="sl-custom-sql">
+  <textarea id="sl-custom-sql-input" placeholder="SELECT ts, event_type, message FROM audit_log ORDER BY ts DESC LIMIT 50">${_slState.qqSql}</textarea>
+  <div style="display:flex;gap:8px">
+    <button class="sl-filter-btn" id="sl-qq-run">▶ Run Query</button>
+    <button class="sl-filter-btn sl-filter-btn-reset" id="sl-qq-clear">✕ Clear</button>
+  </div>
+</div>
+<div id="sl-qq-result-area" class="sl-qq-result">${_slState.qqResult ? _slRenderQQResult(_slState.qqResult) : ''}</div>`;
+}
+
+function _slBindQQ(){
+  document.querySelectorAll('[data-qq-idx]').forEach(card=>{
+    card.addEventListener('click',async ()=>{
+      const idx = parseInt(card.dataset.qqIdx);
+      const q   = SL_QUICK_QUERIES[idx];
+      if(!q) return;
+      const ta = document.getElementById('sl-custom-sql-input');
+      if(ta){ ta.value = q.sql; _slState.qqSql = q.sql; }
+      await _slRunQuery(q.sql);
+    });
+  });
+  document.getElementById('sl-qq-run')?.addEventListener('click',async ()=>{
+    const sql = document.getElementById('sl-custom-sql-input')?.value || '';
+    _slState.qqSql = sql;
+    await _slRunQuery(sql);
+  });
+  document.getElementById('sl-qq-clear')?.addEventListener('click',()=>{
+    const ta = document.getElementById('sl-custom-sql-input');
+    if(ta) ta.value = '';
+    _slState.qqSql = '';
+    _slState.qqResult = null;
+    const ra = document.getElementById('sl-qq-result-area');
+    if(ra) ra.innerHTML = '';
+  });
+}
+
+async function _slRunQuery(sql){
+  const ra = document.getElementById('sl-qq-result-area');
+  if(!ra) return;
+  ra.innerHTML = '<div style="padding:12px;color:var(--dim)">⏳ Running…</div>';
+  try {
+    const res = await apiPost('/api/logs/query', {sql});
+    _slState.qqResult = res;
+    ra.innerHTML = _slRenderQQResult(res);
+  } catch(e){
+    ra.innerHTML = `<div style="padding:12px;color:var(--red)">❌ ${e.message}</div>`;
+  }
+}
+
+function _slRenderQQResult(res){
+  if(!res || !res.rows) return '';
+  const {columns=[], rows=[], count=0} = res;
+  if(!rows.length) return '<div class="sl-empty" style="padding:16px">ไม่มีข้อมูล</div>';
+  const thead = columns.map(c=>`<th>${_htmlEsc(c)}</th>`).join('');
+  const tbody = rows.map(r=>
+    `<tr>${columns.map(c=>`<td>${r[c]!=null?_htmlEsc(String(r[c])):'-'}</td>`).join('')}</tr>`
+  ).join('');
+  return `
+<div style="font-size:11px;color:var(--dim);margin-bottom:6px">${count} rows returned</div>
+<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+  <table class="sl-qq-result-table">
+    <thead><tr>${thead}</tr></thead>
+    <tbody>${tbody}</tbody>
+  </table>
+</div>`;
+}
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+function _htmlEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 // ── EXPORT ────────────────────────────────────────────────────────────────────
 async function ieExport(includeDecomm){
   const status = document.getElementById('ie-export-status');
@@ -5844,7 +7215,7 @@ async function ieExport(includeDecomm){
 
     // Create workbook using manual XML (no library needed)
     const wb = _buildXLSX(header, rows, exportApps);
-    _downloadBlob(wb, `AppPort_Export_${_today()}.xlsx`);
+    _downloadBlob(wb, `MPX-Studio_Export_${_today()}.xlsx`);
     status.innerHTML = `<div class="ie-status success">✅ Export สำเร็จ ${exportApps.length} แอปพลิเคชัน — กำลัง download...</div>`;
   } catch(e){
     status.innerHTML = `<div class="ie-status error">❌ Export ล้มเหลว: ${e.message}</div>`;
@@ -5937,7 +7308,7 @@ ${strings.map(s=>`<si><t xml:space="preserve">${_escXml(s)}</t></si>`).join('\n'
   const wb = `<?xml version="1.0" encoding="UTF-8"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="AppPort Data" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="MPX Studio Data" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const wbRels = `<?xml version="1.0" encoding="UTF-8"?>
@@ -6527,14 +7898,14 @@ function renderMPX2(){
   };
 
   // Badge positions: อ่านจาก API (/api/config/mpx2/badges) ก่อน
-  // ถ้า API ไม่มี (demo mode) fallback ไปอ่านจาก <script id="appport-config">
+  // ถ้า API ไม่มี (demo mode) fallback ไปอ่านจาก <script id="mpx-studio-config">
   const _getEmbeddedBlocks = () => {
     try{
-      const el  = document.getElementById('appport-config');
+      const el  = document.getElementById('mpx-studio-config');
       const cfg = el ? JSON.parse(el.textContent) : {};
       return cfg.mpx2?.badges || [];
     }catch(e){
-      console.warn('appport-config parse error:',e);
+      console.warn('mpx-studio-config parse error:',e);
       return [];
     }
   };
@@ -6550,6 +7921,9 @@ function renderMPX2(){
     // Badge positioned at center of block
     const bx   = b.l + b.w/2;
     const by   = b.t + b.h/2;
+    // Mini Card style — count + health bar
+    const barW  = n ? Math.max(8, avg) : 0;
+    const glow  = n ? `0 0 8px ${c}55` : 'none';
     return `<div
       data-grp="${b.grp}" data-cat="${b.cat}"
       style="position:absolute;left:${bx}%;top:${by}%;
@@ -6557,13 +7931,21 @@ function renderMPX2(){
         pointer-events:all;cursor:${n?'pointer':'default'};
         z-index:10">
       <div style="
-        background:white;border:2.5px solid #1565c0;border-radius:50%;
-        color:#1565c0;font-size:13px;font-weight:800;font-family:var(--mono);
-        width:32px;height:32px;display:flex;align-items:center;justify-content:center;
-        box-shadow:0 2px 8px rgba(0,0,0,.30);
+        background:rgba(10,14,30,.82);
+        border:1.5px solid ${c};
+        border-radius:9px;
+        color:${c};
+        font-size:14px;font-weight:800;font-family:var(--mono);
+        min-width:42px;padding:5px 7px 4px;
+        display:flex;flex-direction:column;align-items:center;gap:4px;
+        box-shadow:0 3px 12px rgba(0,0,0,.45),${glow};
+        backdrop-filter:blur(4px);
         transition:transform .15s,box-shadow .15s;
-        ${n?'':'opacity:.45'}">
-        ${n || '—'}
+        ${n?'':'opacity:.32'}">
+        <span style="line-height:1;letter-spacing:-.5px">${n||'—'}</span>
+        <div style="width:30px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${c};border-radius:2px;transition:width .4s"></div>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -6572,12 +7954,13 @@ function renderMPX2(){
   const showTip = (el, grp, catName) => {
     const list = getApps(grp, catName);
     if(!list.length){ tooltip.classList.remove('visible'); return; }
-    const gd  = EA_STRUCTURE.find(g=>g.group===grp);
-    const col = gd?.color||'#888';
+    const gd   = EA_STRUCTURE.find(g=>g.group===grp);
+    const col  = gd?.color||'#888';
+    const avg  = Math.round(list.reduce((s,a)=>s+a.health,0)/list.length);
     const shown = list.slice(0,8), more = list.length - shown.length;
     tooltip.innerHTML = `
       <div class="bp-tooltip-title" style="color:${col}">${catName}
-        <span style="color:var(--dim);font-weight:400;font-size:11px">(${list.length} apps)</span>
+        <span style="color:var(--dim);font-weight:400;font-size:11px">(${list.length} apps · avg health ${avg})</span>
       </div>
       ${shown.map(a=>`<div class="bp-tooltip-app">
         <span class="bp-tooltip-name">${a.name}</span>
@@ -6593,9 +7976,9 @@ function renderMPX2(){
     tooltip.style.top =(e.clientY+th+8>vh?e.clientY-th-4:e.clientY+10)+'px';
   };
   overlay.querySelectorAll('[data-cat]').forEach(el => {
-    el.addEventListener('mouseenter', () => { showTip(el,el.dataset.grp,el.dataset.cat); el.querySelector('div').style.transform='scale(1.12)'; });
+    el.addEventListener('mouseenter', () => { showTip(el,el.dataset.grp,el.dataset.cat); el.querySelector('div').style.transform='scale(1.08) translateY(-2px)'; el.querySelector('div').style.boxShadow=`0 6px 20px rgba(0,0,0,.5)`; });
     el.addEventListener('mousemove',  moveTip);
-    el.addEventListener('mouseleave', () => { tooltip.classList.remove('visible'); el.querySelector('div').style.transform=''; });
+    el.addEventListener('mouseleave', () => { tooltip.classList.remove('visible'); el.querySelector('div').style.transform=''; el.querySelector('div').style.boxShadow=''; });
     el.addEventListener('click', () => {
       tooltip.classList.remove('visible');
       if(el.dataset.grp){
@@ -6777,12 +8160,30 @@ function renderInventory(){
   // Wire up filters (idempotent guard)
   if(!document.getElementById('inv-search').__wired){
     document.getElementById('inv-search').__wired = true;
-    ['inv-search','inv-filter-domain','inv-filter-status','inv-filter-type'].forEach(id=>{
+    ['inv-search','inv-filter-domain','inv-filter-type'].forEach(id=>{
       const el = document.getElementById(id);
       const evt = id==='inv-search'?'input':'change';
       el?.addEventListener(evt, ()=>renderInventoryRows());
     });
-    document.getElementById('inv-show-decomm')?.addEventListener('change', ()=>renderInventoryRows());
+    // BUG#1 FIX: status filter "Decommissioned" → auto-enable showDecomm checkbox
+    // and reload from API (which normally excludes decomm apps by default)
+    document.getElementById('inv-filter-status')?.addEventListener('change', async ()=>{
+      const sel = document.getElementById('inv-filter-status')?.value;
+      const cb  = document.getElementById('inv-show-decomm');
+      if(sel === 'Decommissioned' && cb && !cb.checked){
+        cb.checked = true;
+        // Reload API with decomm=true so decommissioned apps are in memory
+        await loadAppsFromAPI(true);
+        renderView('inventory');
+      } else {
+        renderInventoryRows();
+      }
+    });
+    document.getElementById('inv-show-decomm')?.addEventListener('change', async ()=>{
+      const checked = document.getElementById('inv-show-decomm')?.checked;
+      await loadAppsFromAPI(!!checked);
+      renderInventoryRows();
+    });
   }
 
   renderInventoryRows();
@@ -6790,8 +8191,10 @@ function renderInventory(){
 
 function renderInventoryRows(){
   const f = getInvFilters();
+  // BUG#1 FIX: when status filter is "Decommissioned", always include decomm apps
+  const includeDecomm = f.showDecomm || f.status === 'Decommissioned';
   const filtered = apps.filter(a=>{
-    if(!f.showDecomm && a.decommissioned) return false;
+    if(!includeDecomm && a.decommissioned) return false;
     if(f.domain && a.domain !== f.domain) return false;
     if(f.status && a.status !== f.status) return false;
     if(f.type && a.type !== f.type) return false;
@@ -6818,9 +8221,9 @@ function renderInventoryRows(){
     const decomDate = isDecomm && a.decommDate ? `<div style="font-size:10px;color:var(--red);font-family:var(--mono);margin-top:2px">สิ้นสุด: ${a.decommDate}</div>` : '';
 
     const editDisabled = isDecomm ? 'disabled title="App ถูก Decommission แล้ว"' : '';
-    const decommDisabled = isDecomm ? 'disabled title="App ถูก Decommission แล้วแล้ว"' : '';
-    const decommIcon = isDecomm ? '🔓' : '🔴';
-    const decommTitle = isDecomm ? 'ปลดระวางแล้ว' : 'Decommission';
+    const decommDisabled = '';   // BUG#3 FIX: restore button must be clickable
+    const decommIcon  = isDecomm ? '🔓' : '🔴';
+    const decommTitle = isDecomm ? 'Restore (ยกเลิก Decommission)' : 'Decommission';
 
     return `<tr class="${rowClass}" data-id="${a.id}">
       <td style="text-align:center;color:var(--muted);font-size:11px;font-family:var(--mono)">${i+1}</td>
@@ -6848,7 +8251,7 @@ function renderInventoryRows(){
       <td>
         <div class="act-btn-row">
           <button class="act-btn edit-btn" ${editDisabled} onclick="openEditModal('${a.id}')" title="แก้ไข">✏️</button>
-          <button class="act-btn decomm-btn" ${decommDisabled} onclick="openDecommModal('${a.id}')" title="${decommTitle}">${decommIcon}</button>
+          <button class="act-btn decomm-btn" onclick="${isDecomm?`openRestoreModal('${a.id}')`:`openDecommModal('${a.id}')`}" title="${decommTitle}">${decommIcon}</button>
         </div>
       </td>
     </tr>`;
@@ -7008,6 +8411,48 @@ function openDecommModal(id){
 document.getElementById('modal-decomm-close').onclick  = ()=>document.getElementById('modal-decomm').style.display='none';
 document.getElementById('modal-decomm-cancel').onclick = ()=>document.getElementById('modal-decomm').style.display='none';
 document.getElementById('modal-decomm').onclick = e=>{ if(e.target===document.getElementById('modal-decomm')) document.getElementById('modal-decomm').style.display='none'; };
+
+// ── RESTORE MODAL ──────────────────────────────────────────────────────────────
+let restoreAppId = null;
+
+function openRestoreModal(id){
+  const a = apps.find(x=>x.id===id);
+  if(!a || !a.decommissioned) return;
+  restoreAppId = id;
+  document.getElementById('restore-body').innerHTML=`
+    <div class="decomm-info-card">
+      <div class="di-name">${escapeHTML(a.name)}</div>
+      <div class="di-meta">
+        <span>${escapeHTML(a.id)}</span>
+        <span>•</span><span>${escapeHTML(a.domain)}</span>
+        <span>•</span><span>${escapeHTML(a.vendor)}</span>
+        <span>•</span><span style="color:var(--red)">🔴 DECOMMISSIONED</span>
+      </div>
+      ${a.decommDate?`<div style="margin-top:4px;font-size:11px;color:var(--dim)">วันที่ปลดระวาง: ${a.decommDate}</div>`:''}
+      ${a.decommReason?`<div style="margin-top:2px;font-size:11px;color:var(--dim)">เหตุผล: ${escapeHTML(a.decommReason)}</div>`:''}
+    </div>
+    <div class="decomm-warning" style="background:rgba(0,214,143,.07);border-color:rgba(0,214,143,.3);color:var(--green)">
+      ℹ️ การ Restore จะนำ App นี้กลับเข้าสู่ Active Portfolio — ข้อมูล Decommission จะถูกล้างออก
+    </div>
+    <div style="margin-top:12px">
+      <label class="form-label" style="margin-bottom:5px;display:block">สถานะหลัง Restore</label>
+      <select class="form-input" id="restore-status" style="height:38px">
+        <option value="Active">Active</option>
+        <option value="Phase-out">Phase-out</option>
+        <option value="To-retire">To-retire</option>
+        <option value="Planned">Planned</option>
+      </select>
+    </div>
+    <div style="margin-top:10px">
+      <label class="form-label" style="margin-bottom:5px;display:block">เหตุผลในการ Restore</label>
+      <textarea class="form-input" id="restore-reason" rows="2" placeholder="เช่น ยกเลิกมติปลดระวาง, ต้องการใช้ระบบต่อ, ฯลฯ" style="resize:vertical"></textarea>
+    </div>`;
+  document.getElementById('modal-restore').style.display='flex';
+}
+
+document.getElementById('modal-restore-close').onclick  = ()=>document.getElementById('modal-restore').style.display='none';
+document.getElementById('modal-restore-cancel').onclick = ()=>document.getElementById('modal-restore').style.display='none';
+document.getElementById('modal-restore').onclick = e=>{ if(e.target===document.getElementById('modal-restore')) document.getElementById('modal-restore').style.display='none'; };
 
 // BUG-03: handler เก่า (local-state-only) ถูกลบออก
 // → ใช้ async handler ที่เรียก POST /api/apps/:id/decommission แทน (ดูด้านล่าง)
@@ -8146,6 +9591,782 @@ document.getElementById('modal-decomm-confirm').onclick = async ()=>{
 };
 
 
+// Restore confirm handler → POST /api/apps/:id/restore
+document.getElementById('modal-restore-confirm').onclick = async ()=>{
+  const status = document.getElementById('restore-status')?.value || 'Active';
+  const reason = document.getElementById('restore-reason')?.value.trim() || 'ยกเลิกการปลดระวาง';
+  const btn = document.getElementById('modal-restore-confirm');
+  btn.disabled=true; btn.textContent='⏳ กำลัง Restore…';
+  try {
+    await apiPost(`/api/apps/${restoreAppId}/restore`, {
+      restore_status: status, restore_reason: reason
+    });
+    document.getElementById('modal-restore').style.display='none';
+    showToast('🔓 Restore เรียบร้อย — App กลับสู่ Active Portfolio');
+    // Also uncheck showDecomm since we likely want to see the restored app in normal view
+    const cb = document.getElementById('inv-show-decomm');
+    await loadAppsFromAPI(cb?.checked||false);
+    const activeView = document.querySelector('.view.active')?.id?.replace('view-','');
+    if(activeView) renderView(activeView);
+    const sbCount = document.getElementById('sb-app-count');
+    if(sbCount) sbCount.textContent = `${apps.filter(a=>!a.decommissioned).length} Apps · ${[...new Set(apps.map(a=>a.domain))].length} Domains`;
+  } catch(e){
+    showToast('❌ '+e.message,'error');
+  } finally {
+    btn.disabled=false; btn.textContent='🔓 ยืนยัน Restore';
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VENDOR MANAGEMENT VIEWS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Shared state & helpers ──────────────────────────────────────────────────
+let _vmStats    = null;
+let _vmVendors  = [];
+let _vmEngList  = [];
+
+const VM_TIER_CLASS = {Preferred:'vm-tier-preferred',Approved:'vm-tier-approved',Registered:'vm-tier-registered'};
+const VM_ENG_CLASS  = {'Completed':'vm-eng-completed','In Progress':'vm-eng-inprogress','Planned':'vm-eng-planned','Cancelled':'vm-eng-cancelled'};
+const VM_REM_CLASS  = {'Closed':'vm-rem-closed','Open':'vm-rem-open','In Progress':'vm-rem-inprogress'};
+
+function _vmTier(t){ return `<span class="vm-tier ${VM_TIER_CLASS[t]||'vm-tier-registered'}">${t||'Registered'}</span>`; }
+function _vmEngBadge(s){ return `<span class="sl-badge ${VM_ENG_CLASS[s]||''}" style="font-size:10px">${s||'-'}</span>`; }
+function _vmRemBadge(s){ return `<span class="sl-badge ${VM_REM_CLASS[s]||''}" style="font-size:10px">${s||'-'}</span>`; }
+function _vmFindings(e){
+  if(!e) return '-';
+  const chips = [];
+  if(e.critical) chips.push(`<span class="vm-find-chip vm-find-c">C:${e.critical}</span>`);
+  if(e.high)     chips.push(`<span class="vm-find-chip vm-find-h">H:${e.high}</span>`);
+  if(e.medium)   chips.push(`<span class="vm-find-chip vm-find-m">M:${e.medium}</span>`);
+  if(e.low)      chips.push(`<span class="vm-find-chip vm-find-l">L:${e.low}</span>`);
+  return chips.length ? `<div class="vm-findings">${chips.join('')}</div>` : '<span style="color:var(--dim);font-size:11px">None</span>';
+}
+function _vmScore(s){ if(s==null||s===0) return '-'; const stars='★'.repeat(Math.round(s/2))+'☆'.repeat(5-Math.round(s/2)); return `<span class="vm-score" title="${s}/10">${stars} ${s}</span>`; }
+
+// ─── KPI bar (reusable) ──────────────────────────────────────────────────────
+function _vmKpiBar(label,val,color,max){
+  const pct = Math.min(100, max>0 ? val/max*100 : 0);
+  return `<div class="vm-bar-row">
+    <div class="vm-bar-label" title="${label}">${label}</div>
+    <div class="vm-bar-track"><div class="vm-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div class="vm-bar-val">${val}</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VIEW 1: VENDOR REGISTRY
+// ══════════════════════════════════════════════════════════════════
+async function renderVendorRegistry(){
+  const el = document.getElementById('vr-content');
+  if(!el) return;
+  el.innerHTML = '<div style="padding:20px;color:var(--dim)">⏳ Loading…</div>';
+  try {
+    const [vendors, stats] = await Promise.all([
+      apiGet('/api/vendors'),
+      _vmStats ? Promise.resolve(_vmStats) : apiGet('/api/vendors/stats')
+    ]);
+    _vmVendors = vendors;
+    _vmStats   = stats;
+  } catch(e){ el.innerHTML=`<div style="padding:20px;color:var(--red)">❌ ${e.message}</div>`; return; }
+
+  el.innerHTML = `
+<div class="vm-page">
+  <!-- Stats row -->
+  <div class="vm-stats-row">
+    <div class="vm-stat"><div class="vm-stat-val">${_vmStats.total_vendors}</div><div class="vm-stat-label">Total Vendors</div></div>
+    <div class="vm-stat"><div class="vm-stat-val" style="color:#ffc107">${_vmStats.preferred}</div><div class="vm-stat-label">Preferred</div></div>
+    <div class="vm-stat"><div class="vm-stat-val" style="color:var(--green)">${_vmStats.approved}</div><div class="vm-stat-label">Approved</div></div>
+    <div class="vm-stat"><div class="vm-stat-val" style="color:var(--red)">${_vmStats.open_critical}</div><div class="vm-stat-label">Open Critical</div></div>
+    <div class="vm-stat"><div class="vm-stat-val" style="color:var(--accent)">${_vmStats.avg_score}</div><div class="vm-stat-label">Avg Score</div></div>
+  </div>
+
+  <!-- Filter + Add -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:800;color:var(--text)">🏢 Vendor Registry</div>
+      <button class="vm-btn vm-btn-primary" onclick="_vmOpenAddVendor()">+ Add Vendor</button>
+    </div>
+    <div class="vm-filter-bar">
+      <select id="vr-f-tier">
+        <option value="">All Tiers</option>
+        <option>Preferred</option><option>Approved</option><option>Registered</option>
+      </select>
+      <select id="vr-f-type">
+        <option value="">All Types</option>
+        ${['Pentest','VA','SAST','Red Team','Compliance Audit','Cloud Security'].map(t=>`<option>${t}</option>`).join('')}
+      </select>
+      <input id="vr-f-search" placeholder="ค้นหา vendor…" style="min-width:180px">
+      <button class="vm-filter-btn" onclick="_vrApplyFilter()">🔍 Filter</button>
+      <button class="vm-filter-btn vm-filter-btn-ghost" onclick="_vrResetFilter()">✕</button>
+    </div>
+    <div id="vr-detail-area"></div>
+    <div class="vm-table-wrap">
+      <table class="vm-table">
+        <thead><tr>
+          <th>Vendor</th><th>Type</th><th>Tier</th><th>Capabilities</th>
+          <th>Engagements</th><th>Avg Score</th><th>Framework End</th>
+          <th>NDA</th><th>Risk</th><th>Last Work</th>
+        </tr></thead>
+        <tbody id="vr-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>`;
+
+  _vrRenderTable(_vmVendors);
+
+  document.getElementById('vr-f-search').addEventListener('keydown', e=>{
+    if(e.key==='Enter') _vrApplyFilter();
+  });
+}
+
+function _vrApplyFilter(){
+  const tier   = document.getElementById('vr-f-tier')?.value   || '';
+  const type   = document.getElementById('vr-f-type')?.value   || '';
+  const search = (document.getElementById('vr-f-search')?.value||'').toLowerCase();
+  const filtered = _vmVendors.filter(v=>
+    (!tier   || v.tier===tier) &&
+    (!type   || v.type===type) &&
+    (!search || v.name.toLowerCase().includes(search) || (v.contact_name||'').toLowerCase().includes(search))
+  );
+  _vrRenderTable(filtered);
+}
+function _vrResetFilter(){
+  ['vr-f-tier','vr-f-type'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const s = document.getElementById('vr-f-search'); if(s) s.value='';
+  _vrRenderTable(_vmVendors);
+}
+
+function _vrRenderTable(list){
+  const tb = document.getElementById('vr-tbody');
+  if(!tb) return;
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--dim)">ไม่พบ Vendor ที่ตรงกับเงื่อนไข</td></tr>`; return; }
+  tb.innerHTML = list.map(v=>`
+    <tr class="clickable" data-vid="${v.vendor_id}">
+      <td><div style="font-weight:700;color:var(--text)">${v.name}</div><div style="font-size:10px;color:var(--dim)">${v.vendor_id} · ${v.contact_email||'-'}</div></td>
+      <td>${v.type||'-'}</td>
+      <td>${_vmTier(v.tier)}</td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:3px">${(v.specializations||[]).slice(0,2).map(s=>`<span style="font-size:10px;background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:1px 6px;color:var(--dim)">${s}</span>`).join('')}${(v.specializations||[]).length>2?`<span style="font-size:10px;color:var(--dim)">+${v.specializations.length-2}</span>`:''}</div></td>
+      <td style="text-align:center;font-family:var(--mono)">${v.eng_count||0}</td>
+      <td>${_vmScore(v.avg_score)}</td>
+      <td style="font-size:11px">${v.framework_end||'—'}</td>
+      <td style="text-align:center">${v.nda_signed?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>'}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${v.risk_rating==='Low'?'var(--green)':v.risk_rating==='High'?'var(--red)':'var(--yellow)'}">${v.risk_rating}</span></td>
+      <td style="font-size:11px;color:var(--dim)">${v.last_engagement||'Never'}</td>
+    </tr>`).join('');
+
+  document.querySelectorAll('#vr-tbody tr[data-vid]').forEach(tr=>{
+    tr.addEventListener('click', async ()=>{
+      const vid = tr.dataset.vid;
+      const area = document.getElementById('vr-detail-area');
+      if(area.dataset.open===vid){ area.innerHTML=''; area.removeAttribute('data-open'); return; }
+      area.innerHTML='<div style="padding:12px;color:var(--dim)">⏳ Loading detail…</div>';
+      area.dataset.open = vid;
+      try {
+        const v = await apiGet(`/api/vendors/${vid}`);
+        area.innerHTML = _vrDetailPanel(v);
+      } catch(e){ area.innerHTML=`<div style="padding:12px;color:var(--red)">❌ ${e.message}</div>`; }
+    });
+  });
+}
+
+function _vrDetailPanel(v){
+  const specs = (v.specializations||[]).map(s=>`<span class="vm-cap-chip">${s}</span>`).join('');
+  const certs = (v.certifications||[]).map(c=>`<span class="vm-cap-chip" style="color:var(--green)">🏅 ${c}</span>`).join('');
+  const caps  = (v.capabilities||[]).map(c=>`<span class="vm-cap-chip">${'★'.repeat(c.proficiency||0)} ${c.capability} ${c.certified?'<span class="cert">✓</span>':''}</span>`).join('');
+  const recentEngs = (v.engagements||[]).slice(0,4).map(e=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="color:var(--dim);min-width:90px">${e.start_date||'-'}</span>
+      <span style="font-weight:700">${e.type}</span>
+      <span style="color:var(--dim)">${e.app_id||'Org-wide'}</span>
+      ${_vmEngBadge(e.status)}
+      ${_vmFindings(e)}
+      ${_vmScore(e.score)}
+      <span style="margin-left:auto;color:var(--dim);font-size:11px">฿${(e.cost||0).toLocaleString()}K</span>
+    </div>`).join('');
+
+  return `<div class="vm-detail">
+    <div class="vm-detail-title">
+      ${_vmTier(v.tier)} ${v.name}
+      <span style="font-size:11px;color:var(--dim)">${v.vendor_id}</span>
+      <button class="vm-btn vm-btn-primary" style="margin-left:auto;padding:6px 14px;font-size:11px" onclick="_vmOpenEditVendor('${v.vendor_id}')">✏️ Edit</button>
+    </div>
+    <div class="vm-detail-grid">
+      <div class="vm-detail-item"><div class="vm-detail-key">Type</div><div class="vm-detail-val">${v.type||'—'}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Contact</div><div class="vm-detail-val">${v.contact_name||'—'}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Email</div><div class="vm-detail-val">${v.contact_email||'—'}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">NDA Signed</div><div class="vm-detail-val">${v.nda_signed?'<span style="color:var(--green)">✓ Yes</span>':'<span style="color:var(--red)">✗ No</span>'}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Insurance</div><div class="vm-detail-val">฿${(v.insurance_amt||0).toLocaleString()}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Framework End</div><div class="vm-detail-val">${v.framework_end||'—'}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Risk Rating</div><div class="vm-detail-val" style="color:${v.risk_rating==='Low'?'var(--green)':v.risk_rating==='High'?'var(--red)':'var(--yellow)'};font-weight:700">${v.risk_rating}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Avg Score</div><div class="vm-detail-val">${_vmScore(v.avg_score)}</div></div>
+      <div class="vm-detail-item"><div class="vm-detail-key">Website</div><div class="vm-detail-val">${v.website||'—'}</div></div>
+    </div>
+    ${v.notes?`<div style="font-size:12px;color:var(--dim);padding:8px 10px;background:var(--card2);border-radius:7px;margin-bottom:10px">💬 ${v.notes}</div>`:''}
+    <div style="margin-bottom:10px"><div class="vm-detail-key" style="margin-bottom:6px">Specializations</div><div class="vm-cap-grid">${specs||'—'}</div></div>
+    <div style="margin-bottom:10px"><div class="vm-detail-key" style="margin-bottom:6px">Certifications</div><div class="vm-cap-grid">${certs||'—'}</div></div>
+    <div style="margin-bottom:14px"><div class="vm-detail-key" style="margin-bottom:6px">Capabilities & Proficiency</div><div class="vm-cap-grid">${caps||'—'}</div></div>
+    ${recentEngs?`<div><div class="vm-detail-key" style="margin-bottom:6px">Recent Engagements</div>${recentEngs}</div>`:''}
+    <div style="margin-top:10px;font-size:11px;color:var(--dim)">คลิกแถวอีกครั้งเพื่อปิด</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VIEW 2: ENGAGEMENT TRACKER
+// ══════════════════════════════════════════════════════════════════
+async function renderVendorEngagement(){
+  const el = document.getElementById('ve-content');
+  if(!el) return;
+  el.innerHTML='<div style="padding:20px;color:var(--dim)">⏳ Loading…</div>';
+  try {
+    const [engs, vendors] = await Promise.all([
+      apiGet('/api/engagements'),
+      _vmVendors.length ? Promise.resolve(_vmVendors) : apiGet('/api/vendors')
+    ]);
+    _vmEngList = engs;
+    if(!_vmVendors.length) _vmVendors = vendors;
+  } catch(e){ el.innerHTML=`<div style="padding:20px;color:var(--red)">❌ ${e.message}</div>`; return; }
+
+  const vendorOpts = _vmVendors.map(v=>`<option value="${v.vendor_id}">${v.name}</option>`).join('');
+  const appOpts    = [...new Set(_vmEngList.filter(e=>e.app_id).map(e=>e.app_id))].sort().map(id=>`<option value="${id}">${id}</option>`).join('');
+
+  el.innerHTML = `
+<div class="vm-page">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:800;color:var(--text)">📋 Engagement Tracker</div>
+      <button class="vm-btn vm-btn-primary" onclick="_vmOpenAddEngagement()">+ Add Engagement</button>
+    </div>
+    <div class="vm-filter-bar">
+      <select id="ve-f-vendor"><option value="">All Vendors</option>${vendorOpts}</select>
+      <select id="ve-f-app"><option value="">All Apps</option><option value="">Org-wide</option>${appOpts}</select>
+      <select id="ve-f-type">
+        <option value="">All Types</option>
+        ${['Pentest','VA','SAST','DAST','Red Team','Compliance Audit'].map(t=>`<option>${t}</option>`).join('')}
+      </select>
+      <select id="ve-f-status">
+        <option value="">All Statuses</option>
+        ${['Planned','In Progress','Completed','Cancelled'].map(s=>`<option>${s}</option>`).join('')}
+      </select>
+      <button class="vm-filter-btn" onclick="_veApplyFilter()">🔍 Filter</button>
+      <button class="vm-filter-btn vm-filter-btn-ghost" onclick="_veResetFilter()">✕</button>
+    </div>
+    <div class="vm-table-wrap">
+      <table class="vm-table">
+        <thead><tr>
+          <th>Date</th><th>Vendor</th><th>App</th><th>Type</th><th>Status</th>
+          <th>Findings</th><th>Remediation</th><th>Score</th><th>Cost (K฿)</th><th>Report</th><th></th>
+        </tr></thead>
+        <tbody id="ve-tbody"></tbody>
+      </table>
+    </div>
+    <div id="ve-summary" style="margin-top:10px;font-size:11px;color:var(--dim)"></div>
+  </div>
+</div>`;
+
+  _veRenderTable(_vmEngList);
+}
+
+function _veApplyFilter(){
+  const vid  = document.getElementById('ve-f-vendor')?.value||'';
+  const aid  = document.getElementById('ve-f-app')?.value||'';
+  const type = document.getElementById('ve-f-type')?.value||'';
+  const stat = document.getElementById('ve-f-status')?.value||'';
+  _veRenderTable(_vmEngList.filter(e=>
+    (!vid  || e.vendor_id===vid) &&
+    (!aid  || e.app_id===aid) &&
+    (!type || e.type===type) &&
+    (!stat || e.status===stat)
+  ));
+}
+function _veResetFilter(){
+  ['ve-f-vendor','ve-f-app','ve-f-type','ve-f-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  _veRenderTable(_vmEngList);
+}
+
+function _veRenderTable(list){
+  const tb = document.getElementById('ve-tbody');
+  const sm = document.getElementById('ve-summary');
+  if(!tb) return;
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--dim)">ไม่พบ Engagement ที่ตรงกับเงื่อนไข</td></tr>`; if(sm) sm.textContent=''; return; }
+  tb.innerHTML = list.map(e=>`
+    <tr data-eid="${e.engagement_id}">
+      <td><div style="font-size:11px;font-weight:700">${e.start_date||'-'}</div><div style="font-size:10px;color:var(--dim)">${e.end_date||''}</div></td>
+      <td><div style="font-weight:700;font-size:11px">${e.vendor_name||e.vendor_id}</div></td>
+      <td><span style="font-family:var(--mono);font-size:11px;color:var(--accent)">${e.app_id||'Org-wide'}</span></td>
+      <td><span style="font-size:11px;font-weight:700">${e.type}</span></td>
+      <td>${_vmEngBadge(e.status)}</td>
+      <td>${_vmFindings(e)}</td>
+      <td>${_vmRemBadge(e.remediation_status)}</td>
+      <td>${_vmScore(e.score)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px">${e.cost?(e.cost/1000).toLocaleString():'-'}</td>
+      <td style="font-size:11px;color:var(--accent)">${e.report_ref||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="vm-btn vm-btn-ghost" style="padding:3px 8px;font-size:11px"
+          onclick="event.stopPropagation();_vmOpenEditEngagement('${e.engagement_id}')">✏️ Edit</button>
+      </td>
+    </tr>`).join('');
+
+  const totalCost = list.reduce((s,e)=>s+(e.cost||0),0);
+  const openC = list.reduce((s,e)=>s+(e.remediation_status!=='Closed'?e.critical:0),0);
+  const openH = list.reduce((s,e)=>s+(e.remediation_status!=='Closed'?e.high:0),0);
+  if(sm) sm.innerHTML = `${list.length} engagements · ฿${(totalCost/1000).toLocaleString()}K total · Open: <span style="color:var(--red)">C:${openC}</span> <span style="color:#ff9f43">H:${openH}</span>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VIEW 3: FINDINGS DASHBOARD (Analysis)
+// ══════════════════════════════════════════════════════════════════
+async function renderVendorFindings(){
+  const el = document.getElementById('vf-content');
+  if(!el) return;
+  el.innerHTML='<div style="padding:20px;color:var(--dim)">⏳ Loading…</div>';
+  try {
+    const [engs, stats, vendors] = await Promise.all([
+      _vmEngList.length ? Promise.resolve(_vmEngList) : apiGet('/api/engagements'),
+      _vmStats ? Promise.resolve(_vmStats) : apiGet('/api/vendors/stats'),
+      _vmVendors.length ? Promise.resolve(_vmVendors) : apiGet('/api/vendors')
+    ]);
+    _vmEngList  = engs;
+    _vmStats    = stats;
+    _vmVendors  = vendors;
+  } catch(e){ el.innerHTML=`<div style="padding:20px;color:var(--red)">❌ ${e.message}</div>`; return; }
+
+  // Compute analytics
+  const completed = _vmEngList.filter(e=>e.status==='Completed');
+  const totalC = completed.reduce((s,e)=>s+e.critical,0);
+  const totalH = completed.reduce((s,e)=>s+e.high,0);
+  const totalM = completed.reduce((s,e)=>s+e.medium,0);
+  const totalL = completed.reduce((s,e)=>s+e.low,0);
+  const openC  = _vmEngList.reduce((s,e)=>s+(e.remediation_status!=='Closed'?e.critical:0),0);
+  const openH  = _vmEngList.reduce((s,e)=>s+(e.remediation_status!=='Closed'?e.high:0),0);
+  const totalCost = _vmEngList.reduce((s,e)=>s+(e.cost||0),0);
+
+  // Findings by vendor
+  const byVendor = {};
+  _vmEngList.forEach(e=>{
+    if(!byVendor[e.vendor_id]) byVendor[e.vendor_id] = {name:e.vendor_name||e.vendor_id,c:0,h:0,m:0,l:0,engs:0,cost:0,scores:[]};
+    const v = byVendor[e.vendor_id];
+    v.c+=e.critical; v.h+=e.high; v.m+=e.medium; v.l+=e.low; v.engs++;
+    v.cost+=e.cost||0;
+    if(e.score) v.scores.push(e.score);
+  });
+
+  // Apps with open high/critical
+  const appRisk = {};
+  _vmEngList.filter(e=>e.app_id&&e.remediation_status!=='Closed').forEach(e=>{
+    if(!appRisk[e.app_id]) appRisk[e.app_id] = {c:0,h:0,vendor:e.vendor_name||e.vendor_id,type:e.type};
+    appRisk[e.app_id].c += e.critical;
+    appRisk[e.app_id].h += e.high;
+  });
+  const riskApps = Object.entries(appRisk)
+    .filter(([,v])=>v.c>0||v.h>0)
+    .sort((a,b)=>b[1].c-a[1].c||b[1].h-a[1].h);
+
+  // Remediation summary
+  const remCounts = {Closed:0,Open:0,'In Progress':0};
+  _vmEngList.forEach(e=>{ if(remCounts[e.remediation_status]!=null) remCounts[e.remediation_status]++; });
+
+  const maxFindings = Math.max(1,...Object.values(byVendor).map(v=>v.c+v.h+v.m+v.l));
+
+  el.innerHTML = `
+<div class="vm-page">
+  <!-- KPI Row -->
+  <div class="vm-stats-row">
+    <div class="vm-stat"><div class="vm-stat-val" style="color:var(--red)">${openC}</div><div class="vm-stat-label">Open Critical</div></div>
+    <div class="vm-stat"><div class="vm-stat-val" style="color:#ff9f43">${openH}</div><div class="vm-stat-label">Open High</div></div>
+    <div class="vm-stat"><div class="vm-stat-val">${totalC+totalH+totalM+totalL}</div><div class="vm-stat-label">Total Findings</div></div>
+    <div class="vm-stat"><div class="vm-stat-val" style="color:var(--green)">${_vmStats.avg_score}</div><div class="vm-stat-label">Avg Vendor Score</div></div>
+    <div class="vm-stat"><div class="vm-stat-val">฿${(totalCost/1000).toLocaleString()}K</div><div class="vm-stat-label">Total Investment</div></div>
+  </div>
+
+  <div class="vm-analysis-grid">
+    <!-- Findings by vendor -->
+    <div class="vm-analysis-card">
+      <div class="vm-analysis-title">📊 Findings by Vendor (Total)</div>
+      ${Object.entries(byVendor).sort((a,b)=>(b[1].c+b[1].h)-(a[1].c+a[1].h)).map(([,v])=>{
+        const tot = v.c+v.h+v.m+v.l;
+        const col = v.c>0?'var(--red)':v.h>0?'#ff9f43':'var(--green)';
+        return _vmKpiBar(`${v.name} (${v.engs} eng)`, tot, col, maxFindings);
+      }).join('')}
+    </div>
+
+    <!-- Vendor Performance (Avg Score) -->
+    <div class="vm-analysis-card">
+      <div class="vm-analysis-title">⭐ Vendor Performance (Avg Score)</div>
+      ${Object.entries(byVendor).filter(([,v])=>v.scores.length>0).sort((a,b)=>{
+        const sa=a[1].scores.reduce((s,x)=>s+x,0)/a[1].scores.length;
+        const sb=b[1].scores.reduce((s,x)=>s+x,0)/b[1].scores.length;
+        return sb-sa;
+      }).map(([,v])=>{
+        const avg = v.scores.reduce((s,x)=>s+x,0)/v.scores.length;
+        return _vmKpiBar(v.name, avg.toFixed(1), avg>=8?'var(--green)':avg>=6?'var(--yellow)':'var(--red)', 10);
+      }).join('')}
+    </div>
+
+    <!-- Remediation Status -->
+    <div class="vm-analysis-card">
+      <div class="vm-analysis-title">🔧 Remediation Status</div>
+      <div style="display:flex;gap:20px;justify-content:center;padding:16px 0">
+        ${[['Closed',remCounts.Closed,'var(--green)'],['In Progress',remCounts['In Progress'],'var(--yellow)'],['Open',remCounts.Open,'var(--red)']].map(([l,n,c])=>`
+        <div style="text-align:center">
+          <div style="font-size:36px;font-weight:900;color:${c};font-family:var(--mono)">${n}</div>
+          <div style="font-size:11px;color:var(--dim)">${l}</div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:8px">
+        ${['Closed','In Progress','Open'].map(k=>_vmKpiBar(k,remCounts[k],k==='Closed'?'var(--green)':k==='Open'?'var(--red)':'var(--yellow)',_vmEngList.length)).join('')}
+      </div>
+    </div>
+
+    <!-- Apps with open risks -->
+    <div class="vm-analysis-card">
+      <div class="vm-analysis-title">🚨 Apps with Open Critical/High</div>
+      ${riskApps.length===0?'<div style="text-align:center;padding:20px;color:var(--green)">✅ ไม่มี App ที่มี Open Critical/High</div>':
+        `<div class="vm-table-wrap"><table class="vm-table">
+          <thead><tr><th>App</th><th>C</th><th>H</th><th>Last Vendor</th></tr></thead>
+          <tbody>${riskApps.map(([aid,v])=>`<tr>
+            <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${aid}</td>
+            <td style="text-align:center"><span class="vm-find-chip vm-find-c">${v.c}</span></td>
+            <td style="text-align:center"><span class="vm-find-chip vm-find-h">${v.h}</span></td>
+            <td style="font-size:11px">${v.vendor}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+    </div>
+  </div>
+
+  <!-- Cost & Investment by vendor -->
+  <div class="vm-analysis-card" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px">
+    <div class="vm-analysis-title">💰 Investment by Vendor</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    ${Object.entries(byVendor).sort((a,b)=>b[1].cost-a[1].cost).map(([,v])=>{
+      const maxCost = Math.max(...Object.values(byVendor).map(x=>x.cost));
+      return _vmKpiBar(`${v.name} (${v.engs} eng)`, `฿${(v.cost/1000).toFixed(0)}K`, 'var(--accent)', 1);
+    }).join('')}
+    </div>
+  </div>
+</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VIEW 4: APP COVERAGE MAP (Analysis)
+// ══════════════════════════════════════════════════════════════════
+async function renderVendorAppMap(){
+  const el = document.getElementById('vam-content');
+  if(!el) return;
+  el.innerHTML='<div style="padding:20px;color:var(--dim)">⏳ Loading…</div>';
+  try {
+    const engs = _vmEngList.length ? _vmEngList : await apiGet('/api/engagements');
+    _vmEngList = engs;
+  } catch(e){ el.innerHTML=`<div style="padding:20px;color:var(--red)">❌ ${e.message}</div>`; return; }
+
+  const ENG_TYPES = ['Pentest','VA','SAST','DAST','Red Team','Compliance Audit'];
+  const now = new Date();
+
+  // Build coverage map: app_id → {type → {date, vendor, status}}
+  const coverage = {};
+  _vmEngList.filter(e=>e.app_id&&e.status==='Completed').forEach(e=>{
+    if(!coverage[e.app_id]) coverage[e.app_id]={};
+    const cur = coverage[e.app_id][e.type];
+    if(!cur || e.end_date > cur.date)
+      coverage[e.app_id][e.type] = {date:e.end_date, vendor:e.vendor_name||e.vendor_id, status:e.remediation_status};
+  });
+  // Planned/In Progress marker
+  const inprogress = {};
+  _vmEngList.filter(e=>e.app_id&&(e.status==='Planned'||e.status==='In Progress')).forEach(e=>{
+    if(!inprogress[e.app_id]) inprogress[e.app_id]={};
+    inprogress[e.app_id][e.type] = e.status;
+  });
+
+  // Apps to show (use MPX Studio apps or union from engagements)
+  const appIds = [...new Set([
+    ...apps.filter(a=>!a.decommissioned&&a.criticality!=='Low').map(a=>a.id),
+    ..._vmEngList.filter(e=>e.app_id).map(e=>e.app_id)
+  ])].sort();
+
+  function _covCell(appId, type){
+    const c  = coverage[appId]?.[type];
+    const ip = inprogress[appId]?.[type];
+    const clickAttr = `style="cursor:pointer" onclick="_vmEnsureVendors().then(()=>_vmOpenAddEngagement('${appId}','${type}'))"`;
+    if(ip){
+      const label = ip==='In Progress'?'🔄':'📅';
+      const editEngs = _vmEngList.filter(e=>e.app_id===appId&&e.type===type&&(e.status==='Planned'||e.status==='In Progress'));
+      const editBtn = editEngs.length?` <span onclick="event.stopPropagation();_vmEnsureVendors().then(()=>_vmOpenEditEngagement('${editEngs[0].engagement_id}'))" style="font-size:9px;opacity:.7">✏️</span>`:'';
+      return `<td class="vm-cov-warn" title="${ip} — click to add another" ${clickAttr}>${label}${editBtn}</td>`;
+    }
+    if(!c) return `<td class="vm-cov-none" title="ยังไม่มี ${type} — คลิกเพื่อเพิ่ม" ${clickAttr}>＋</td>`;
+    const d      = new Date(c.date);
+    const months = (now-d)/(1000*60*60*24*30);
+    const cls    = months<12?'vm-cov-ok':months<24?'vm-cov-warn':'vm-cov-none';
+    const icon   = months<12?'✅':months<24?'⚠️':'🔴';
+    const lastEngs = _vmEngList.filter(e=>e.app_id===appId&&e.type===type&&e.status==='Completed');
+    const editId   = lastEngs.length?lastEngs.sort((a,b)=>b.end_date?.localeCompare(a.end_date||''))[0]?.engagement_id:null;
+    const editBtn  = editId?` <span onclick="event.stopPropagation();_vmEnsureVendors().then(()=>_vmOpenEditEngagement('${editId}'))" style="font-size:9px;opacity:.6">✏️</span>`:'';
+    return `<td class="${cls}" title="${c.vendor} · ${c.date} — คลิกเพื่อเพิ่ม engagement ใหม่" ${clickAttr}>${icon}${editBtn}</td>`;
+  }
+
+  const covStats = {ok:0,warn:0,none:0,total:0};
+  appIds.forEach(aid=>{ ENG_TYPES.forEach(t=>{ covStats.total++;
+    const c=coverage[aid]?.[t]; if(!c){covStats.none++;return;}
+    const m=(now-new Date(c.date))/(1000*60*60*24*30);
+    if(m<12)covStats.ok++;else if(m<24)covStats.warn++;else covStats.none++;
+  }); });
+
+  el.innerHTML = `
+<div class="vm-page">
+  <!-- Legend + Summary -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px">
+    <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">🗺 App Security Coverage Map</div>
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <span style="font-size:12px;color:var(--dim)">Legend:</span>
+      <span style="font-size:12px">✅ Done &lt;12 months</span>
+      <span style="font-size:12px">⚠️ Done 12–24 months</span>
+      <span style="font-size:12px">🔴 Never / &gt;24 months</span>
+      <span style="font-size:12px">🔄 In Progress</span>
+      <span style="font-size:12px">📅 Planned</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--dim)">
+        Coverage: <span style="color:var(--green)">${covStats.ok} ✅</span>
+        <span style="color:#ffc107">${covStats.warn} ⚠️</span>
+        <span style="color:var(--red)">${covStats.none} 🔴</span>
+      </span>
+    </div>
+
+    <!-- Filter by domain -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+      <select id="vam-f-domain" class="vm-filter-bar select" style="height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px">
+        <option value="">All Apps</option>
+        <option value="critical">Mission Critical only</option>
+        ${[...new Set(apps.map(a=>a.domain))].sort().map(d=>`<option value="${d}">${d}</option>`).join('')}
+      </select>
+      <button class="vm-filter-btn" onclick="_vamRender(document.getElementById('vam-f-domain').value)">🔍 Filter</button>
+    </div>
+
+    <div class="vm-map-wrap" id="vam-table-wrap"></div>
+
+    <!-- Never-tested warning -->
+    <div style="margin-top:14px" id="vam-never-list"></div>
+  </div>
+</div>`;
+
+  function _vamRender(domainFilter){
+    let filtered = appIds;
+    if(domainFilter==='critical') filtered = apps.filter(a=>a.criticality==='Mission Critical'&&!a.decommissioned).map(a=>a.id);
+    else if(domainFilter) filtered = apps.filter(a=>a.domain===domainFilter&&!a.decommissioned).map(a=>a.id);
+
+    const wrap = document.getElementById('vam-table-wrap');
+    if(!wrap) return;
+    wrap.innerHTML = `<table class="vm-map-table">
+      <thead><tr>
+        <th style="min-width:160px">App</th>
+        ${ENG_TYPES.map(t=>`<th>${t}</th>`).join('')}
+      </tr></thead>
+      <tbody>${filtered.map(aid=>{
+        const app  = apps.find(a=>a.id===aid);
+        const crit = app?.criticality==='Mission Critical'?'🔴 ':'High'===app?.criticality?'🟡 ':'';
+        return `<tr>
+          <td class="app-name">${crit}<span style="font-family:var(--mono);color:var(--accent)">${aid}</span> ${app?`<span style="font-size:10px;color:var(--dim)">${app.name.substring(0,20)}</span>`:''}
+          </td>
+          ${ENG_TYPES.map(t=>_covCell(aid,t)).join('')}
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+    // Never tested
+    const neverList = filtered.filter(aid=>!coverage[aid]||Object.keys(coverage[aid]).length===0);
+    const nl = document.getElementById('vam-never-list');
+    if(nl && neverList.length>0){
+      nl.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">⚠️ Apps ที่ยังไม่เคยผ่าน Security Assessment (${neverList.length} apps) — คลิกเพื่อเพิ่ม Engagement</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${neverList.map(aid=>{
+          const app=apps.find(a=>a.id===aid);
+          return `<span style="padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.25);cursor:pointer"
+            onclick="_vmEnsureVendors().then(()=>_vmOpenAddEngagement('${aid}'))"
+            title="คลิกเพื่อ Add Engagement สำหรับ ${aid}">${aid}${app?` ${app.name.substring(0,15)}`:''}</span>`;
+        }).join('')}
+        </div>`;
+    } else if(nl){ nl.innerHTML='<div style="font-size:12px;color:var(--green)">✅ ทุก App ผ่าน Security Assessment อย่างน้อย 1 ประเภทแล้ว</div>'; }
+  }
+
+  _vamRender('');
+  document.getElementById('vam-f-domain')?.addEventListener('change', e=>_vamRender(e.target.value));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODAL: Add/Edit Vendor & Engagement
+// ══════════════════════════════════════════════════════════════════
+let _vmModalMode = null; // 'add-vendor' | 'edit-vendor' | 'add-engagement' | 'edit-engagement'
+let _vmModalId   = null;
+
+function _vmOpenAddVendor(){
+  _vmModalMode='add-vendor'; _vmModalId=null;
+  _vmShowModal('🏢 Add Vendor', _vmVendorForm({}));
+}
+function _vmOpenEditVendor(vid){
+  const v = _vmVendors.find(x=>x.vendor_id===vid);
+  if(!v) return;
+  _vmModalMode='edit-vendor'; _vmModalId=vid;
+  _vmShowModal('✏️ Edit Vendor', _vmVendorForm(v));
+}
+// Ensure vendor list is cached before opening modal (needed when called from App Insight)
+async function _vmEnsureVendors(){
+  if(!_vmVendors.length) _vmVendors = await apiGet('/api/vendors').catch(()=>[]);
+  if(!_vmEngList.length) _vmEngList = await apiGet('/api/engagements').catch(()=>[]);
+}
+
+function _vmOpenAddEngagement(preAppId, preType){
+  _vmModalMode='add-engagement'; _vmModalId=null;
+  _vmShowModal('📋 Add Engagement', _vmEngForm({app_id: preAppId||null, type: preType||null}));
+}
+function _vmOpenEditEngagement(eid){
+  const e = _vmEngList.find(x=>x.engagement_id===eid);
+  if(!e){ showToast('❌ ไม่พบ Engagement', 'error'); return; }
+  _vmModalMode='edit-engagement'; _vmModalId=eid;
+  _vmShowModal('✏️ Edit Engagement — '+eid, _vmEngForm(e));
+}
+
+function _vmShowModal(title, body){
+  const ov = document.getElementById('vm-modal-overlay');
+  if(!ov) return;
+  document.getElementById('vm-modal-title').textContent = title;
+  document.getElementById('vm-modal-body').innerHTML = body;
+  ov.classList.add('open');
+}
+
+function _vmVendorForm(v){
+  const tiers  = ['Preferred','Approved','Registered'];
+  const types  = ['Pentest','VA','SAST','Red Team','Compliance Audit','Cloud Security','Other'];
+  const risks  = ['Low','Medium','High'];
+  const stats  = ['Active','Suspended','Blacklisted'];
+  return `<div class="vm-modal-grid">
+    <div class="vm-field"><label class="vm-label">Name *</label><input class="vm-input" id="vmf-name" value="${v.name||''}"></div>
+    <div class="vm-field"><label class="vm-label">Type</label><select class="vm-select" id="vmf-type">${types.map(t=>`<option${v.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="vm-field"><label class="vm-label">Tier</label><select class="vm-select" id="vmf-tier">${tiers.map(t=>`<option${v.tier===t?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="vm-field"><label class="vm-label">Status</label><select class="vm-select" id="vmf-status">${stats.map(s=>`<option${v.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="vm-field"><label class="vm-label">Contact Name</label><input class="vm-input" id="vmf-contact" value="${v.contact_name||''}"></div>
+    <div class="vm-field"><label class="vm-label">Contact Email</label><input class="vm-input" id="vmf-email" value="${v.contact_email||''}"></div>
+    <div class="vm-field"><label class="vm-label">Website</label><input class="vm-input" id="vmf-web" value="${v.website||''}"></div>
+    <div class="vm-field"><label class="vm-label">Framework End</label><input class="vm-input" id="vmf-fend" type="date" value="${v.framework_end||''}"></div>
+    <div class="vm-field"><label class="vm-label">Risk Rating</label><select class="vm-select" id="vmf-risk">${risks.map(r=>`<option${v.risk_rating===r?' selected':''}>${r}</option>`).join('')}</select></div>
+    <div class="vm-field"><label class="vm-label">Insurance (฿)</label><input class="vm-input" id="vmf-ins" type="number" value="${v.insurance_amt||0}"></div>
+    <div class="vm-field" style="grid-column:1/-1"><label class="vm-label">Specializations <span style="color:var(--dim)">(comma separated)</span></label><input class="vm-input" id="vmf-specs" value="${(v.specializations||[]).join(', ')}"></div>
+    <div class="vm-field" style="grid-column:1/-1"><label class="vm-label">Certifications <span style="color:var(--dim)">(comma separated)</span></label><input class="vm-input" id="vmf-certs" value="${(v.certifications||[]).join(', ')}"></div>
+    <div class="vm-field" style="grid-column:1/-1"><label class="vm-label">Notes</label><textarea class="vm-textarea" id="vmf-notes">${v.notes||''}</textarea></div>
+    <div class="vm-field"><label class="vm-label" style="cursor:pointer"><input type="checkbox" id="vmf-nda" ${v.nda_signed?'checked':''}> NDA Signed</label></div>
+  </div>`;
+}
+
+function _vmEngForm(e){
+  e = e||{};
+  const types   = ['Pentest','VA','SAST','DAST','Red Team','Compliance Audit','Cloud Security'];
+  const statuses= ['Planned','In Progress','Completed','Cancelled'];
+  const remStats= ['Open','In Progress','Closed'];
+  const vendOpts= _vmVendors.map(v=>`<option value="${v.vendor_id}"${e.vendor_id===v.vendor_id?' selected':''}>${v.name}</option>`).join('');
+  const appOpts = apps.filter(a=>!a.decommissioned).sort((a,b)=>a.id.localeCompare(b.id)).map(a=>`<option value="${a.id}"${e.app_id===a.id?' selected':''}>${a.id} — ${a.name}</option>`).join('');
+  const defaultRem = e.remediation_status||'Open';
+  return `<div class="vm-modal-grid">
+    <div class="vm-field"><label class="vm-label">Vendor *</label><select class="vm-select" id="vef-vendor"><option value="">— Select —</option>${vendOpts}</select></div>
+    <div class="vm-field"><label class="vm-label">App (optional)</label><select class="vm-select" id="vef-app"><option value="">Org-wide</option>${appOpts}</select></div>
+    <div class="vm-field"><label class="vm-label">Type *</label><select class="vm-select" id="vef-type">${types.map(t=>`<option${e.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="vm-field"><label class="vm-label">Status</label><select class="vm-select" id="vef-status">${statuses.map(s=>`<option${e.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="vm-field"><label class="vm-label">Start Date</label><input class="vm-input" id="vef-start" type="date" value="${e.start_date||''}"></div>
+    <div class="vm-field"><label class="vm-label">End Date</label><input class="vm-input" id="vef-end" type="date" value="${e.end_date||''}"></div>
+    <div class="vm-field"><label class="vm-label">Cost (฿)</label><input class="vm-input" id="vef-cost" type="number" value="${e.cost||0}"></div>
+    <div class="vm-field"><label class="vm-label">Score (1-10)</label><input class="vm-input" id="vef-score" type="number" min="1" max="10" value="${e.score||''}"></div>
+    <div class="vm-field"><label class="vm-label">Critical</label><input class="vm-input" id="vef-c" type="number" min="0" value="${e.critical||0}"></div>
+    <div class="vm-field"><label class="vm-label">High</label><input class="vm-input" id="vef-h" type="number" min="0" value="${e.high||0}"></div>
+    <div class="vm-field"><label class="vm-label">Medium</label><input class="vm-input" id="vef-m" type="number" min="0" value="${e.medium||0}"></div>
+    <div class="vm-field"><label class="vm-label">Low</label><input class="vm-input" id="vef-l" type="number" min="0" value="${e.low||0}"></div>
+    <div class="vm-field"><label class="vm-label">Report Ref</label><input class="vm-input" id="vef-report" value="${e.report_ref||''}"></div>
+    <div class="vm-field"><label class="vm-label">Remediation By</label><input class="vm-input" id="vef-remby" type="date" value="${e.remediation_by||''}"></div>
+    <div class="vm-field"><label class="vm-label">Remediation Status</label><select class="vm-select" id="vef-remstat">${remStats.map(s=>`<option${defaultRem===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="vm-field" style="grid-column:1/-1"><label class="vm-label">Scope / Description</label><textarea class="vm-textarea" id="vef-scope">${e.scope||''}</textarea></div>
+    <div class="vm-field" style="grid-column:1/-1"><label class="vm-label">Notes</label><textarea class="vm-textarea" id="vef-notes">${e.notes||''}</textarea></div>
+  </div>`;
+}
+
+async function _vmModalSave(){
+  const btn = document.getElementById('vm-modal-save');
+  btn.disabled=true; btn.textContent='⏳ Saving…';
+  try {
+    if(_vmModalMode==='add-vendor'||_vmModalMode==='edit-vendor'){
+      const body = {
+        name:     document.getElementById('vmf-name').value.trim(),
+        type:     document.getElementById('vmf-type').value,
+        tier:     document.getElementById('vmf-tier').value,
+        status:   document.getElementById('vmf-status').value,
+        contact_name:  document.getElementById('vmf-contact').value.trim(),
+        contact_email: document.getElementById('vmf-email').value.trim(),
+        website:  document.getElementById('vmf-web').value.trim(),
+        framework_end: document.getElementById('vmf-fend').value||null,
+        risk_rating:   document.getElementById('vmf-risk').value,
+        insurance_amt: +document.getElementById('vmf-ins').value||0,
+        specializations: document.getElementById('vmf-specs').value.split(',').map(s=>s.trim()).filter(Boolean),
+        certifications:  document.getElementById('vmf-certs').value.split(',').map(s=>s.trim()).filter(Boolean),
+        notes:    document.getElementById('vmf-notes').value.trim(),
+        nda_signed: document.getElementById('vmf-nda').checked,
+      };
+      if(!body.name){ showToast('❌ กรุณากรอก Vendor Name','error'); return; }
+      if(_vmModalMode==='edit-vendor'){
+        await apiPut(`/api/vendors/${_vmModalId}`, body);
+        showToast('✅ Vendor updated');
+      } else {
+        await apiPost('/api/vendors', body);
+        showToast('✅ Vendor created');
+      }
+    } else if(_vmModalMode==='add-engagement'||_vmModalMode==='edit-engagement'){
+      const body = {
+        vendor_id: document.getElementById('vef-vendor').value,
+        app_id:    document.getElementById('vef-app').value||null,
+        type:      document.getElementById('vef-type').value,
+        status:    document.getElementById('vef-status').value,
+        start_date: document.getElementById('vef-start').value||null,
+        end_date:   document.getElementById('vef-end').value||null,
+        cost:       +document.getElementById('vef-cost').value||0,
+        score:      +document.getElementById('vef-score').value||null,
+        critical:   +document.getElementById('vef-c').value||0,
+        high:       +document.getElementById('vef-h').value||0,
+        medium:     +document.getElementById('vef-m').value||0,
+        low:        +document.getElementById('vef-l').value||0,
+        report_ref: document.getElementById('vef-report').value.trim()||null,
+        remediation_by:     document.getElementById('vef-remby').value||null,
+        remediation_status: document.getElementById('vef-remstat').value||'Open',
+        scope:  document.getElementById('vef-scope').value.trim(),
+        notes:  document.getElementById('vef-notes').value.trim(),
+      };
+      if(!body.vendor_id){ showToast('❌ กรุณาเลือก Vendor','error'); return; }
+      if(_vmModalMode==='edit-engagement'){
+        await apiPut(`/api/engagements/${_vmModalId}`, body);
+        showToast('✅ Engagement updated');
+      } else {
+        await apiPost('/api/engagements', body);
+        showToast('✅ Engagement created');
+      }
+    }
+    // Refresh data cache
+    _vmStats=null; _vmVendors=[]; _vmEngList=[];
+    document.getElementById('vm-modal-overlay').classList.remove('open');
+    // Re-render current view
+    const cur = document.querySelector('.sb-item.active')?.dataset.view;
+    if(cur&&cur.startsWith('vendor-')){
+      renderView(cur);
+    } else {
+      // If called from App Insight — just refresh engagement section by re-clicking the same app
+      const insId = insightSelectedId;
+      if(insId) setTimeout(()=>{ const row=document.querySelector(`.portfolio-row[data-id="${insId}"]`); if(row) row.click(); }, 200);
+    }
+  } catch(e){ showToast(`❌ ${e.message}`,'error'); }
+  finally { btn.disabled=false; btn.textContent='💾 Save'; }
+}
+
+// Check if apiPut exists, else add minimal one
+if(typeof apiPut==='undefined'){
+  window.apiPut = async function(path, body){
+    const res = await fetch(path, {method:'PUT',headers:_authHeaders(),body:JSON.stringify(body)});
+    if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.detail||`HTTP ${res.status}`); }
+    return res.json();
+  };
+}
+
 // ─── INIT (FULL STACK) ─────────────────────────────────────────────────────────
 (async ()=>{
   try {
@@ -8169,6 +10390,17 @@ document.getElementById('modal-decomm-confirm').onclick = async ()=>{
   }
 })();
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APP BOOT — runs after DOM ready
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Hide app shell immediately, show only after auth
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('topbar').style.display='none';
+  // Boot auth system
+  _authBoot();
+});
 </script>
 </body>
 </html>
