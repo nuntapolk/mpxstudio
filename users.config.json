@@ -65,6 +65,27 @@
         "audit",
         "config"
       ]
+    },
+    {
+      "username": "esa",
+      "display_name": "esa@pea",
+      "email": "esa@pea.co.th",
+      "hashed_password": "pbkdf2$sha256$200000$9KORBj+rqjVXTFrD0089EQ==$S2fcnu67nBGIXlapeHKrn59IkKvmxDpuOQnx8SoPHE4=",
+      "active": true,
+      "roles": [
+        "viewer"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "vendor",
+        "asset",
+        "ops",
+        "audit"
+      ]
     }
   ]
 }

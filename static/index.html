@@ -1436,93 +1436,124 @@ body{
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     LOGIN OVERLAY — shown before authentication
+     LOGIN OVERLAY — shown before authentication  (Day Theme)
      ═══════════════════════════════════════════════════════════════ -->
 <div id="auth-login-overlay" style="
   display:none;position:fixed;inset:0;z-index:9999;
-  background:linear-gradient(135deg,#0a0e1e 0%,#0d1a2e 50%,#0a0e1e 100%);
-  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0">
+  background:linear-gradient(150deg,#dde9f7 0%,#eaf5ea 40%,#e4eef8 100%);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  padding:20px 0;overflow-y:auto">
 
-  <!-- Animated background dots -->
-  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
-    <div style="position:absolute;width:600px;height:600px;border-radius:50%;
-      background:radial-gradient(circle,rgba(0,102,204,.08) 0%,transparent 70%);
-      top:-100px;left:-100px;animation:auth-pulse 8s ease-in-out infinite"></div>
-    <div style="position:absolute;width:400px;height:400px;border-radius:50%;
-      background:radial-gradient(circle,rgba(0,180,120,.06) 0%,transparent 70%);
-      bottom:-80px;right:-80px;animation:auth-pulse 10s ease-in-out infinite reverse"></div>
+  <!-- Soft ambient blobs -->
+  <div style="position:fixed;inset:0;overflow:hidden;pointer-events:none">
+    <div style="position:absolute;width:700px;height:700px;border-radius:50%;
+      background:radial-gradient(circle,rgba(0,120,200,.07) 0%,transparent 65%);
+      top:-180px;left:-160px;animation:auth-pulse 9s ease-in-out infinite"></div>
+    <div style="position:absolute;width:500px;height:500px;border-radius:50%;
+      background:radial-gradient(circle,rgba(30,160,80,.06) 0%,transparent 65%);
+      bottom:-120px;right:-120px;animation:auth-pulse 12s ease-in-out infinite reverse"></div>
+    <div style="position:absolute;width:300px;height:300px;border-radius:50%;
+      background:radial-gradient(circle,rgba(0,100,220,.05) 0%,transparent 70%);
+      top:40%;right:10%;animation:auth-pulse 7s ease-in-out infinite 2s"></div>
   </div>
 
   <!-- Login card -->
   <div style="
     position:relative;z-index:1;
-    background:rgba(16,24,48,.92);
-    border:1px solid rgba(0,102,204,.3);
+    background:#ffffff;
+    border:1px solid rgba(0,0,0,.09);
     border-radius:20px;
-    padding:48px 52px 40px;
-    width:420px;max-width:92vw;
-    box-shadow:0 24px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04);
-    backdrop-filter:blur(16px)">
+    padding:36px 44px 32px;
+    width:500px;max-width:94vw;
+    box-shadow:0 8px 48px rgba(0,60,160,.13),0 2px 12px rgba(0,0,0,.07)">
 
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:32px">
-      <div style="font-size:36px;margin-bottom:10px">⬡</div>
-      <div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:.5px">MPX Studio</div>
-      <div style="color:rgba(255,255,255,.4);font-size:12px;letter-spacing:2px;margin-top:4px">EA PORTFOLIO</div>
+    <!-- ── Logos row ── -->
+    <div style="display:flex;align-items:center;justify-content:center;
+      gap:28px;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid #e8edf5">
+      <img src="/assets/img/incognito-lab-logo.png" alt="Incognito Lab"
+        style="height:52px;width:auto;object-fit:contain;image-rendering:auto"
+        onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'Incognito Lab',style:'font-size:11px;font-weight:700;color:#c0392b'}))">
+      <div style="width:1px;height:48px;background:#e0e8f0;flex-shrink:0"></div>
+      <img src="/assets/img/mpx-logo.png" alt="MPX Service Excellent"
+        style="height:64px;width:auto;max-width:200px;object-fit:contain"
+        onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'MPX Service Excellent',style:'font-size:11px;font-weight:700;color:#1a6e3c'}))">
     </div>
 
-    <!-- Error message -->
+    <!-- ── Title ── -->
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="color:#1a3055;font-size:20px;font-weight:700;letter-spacing:.4px">MPX Studio</div>
+      <div style="color:#5a7090;font-size:11px;font-weight:500;letter-spacing:2.5px;margin-top:4px">EA PORTFOLIO MANAGEMENT</div>
+    </div>
+
+    <!-- ── Error message ── -->
     <div id="auth-error" style="
       display:none;
-      background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.3);
-      border-radius:8px;padding:10px 14px;margin-bottom:18px;
-      color:#ff6b6b;font-size:13px;text-align:center"></div>
+      background:#fff1f1;border:1px solid #ffb3b3;
+      border-radius:8px;padding:10px 14px;margin-bottom:16px;
+      color:#cc3333;font-size:13px;text-align:center"></div>
 
-    <!-- Form -->
+    <!-- ── Form ── -->
     <form id="auth-form" onsubmit="return false">
-      <div style="margin-bottom:18px">
-        <label style="display:block;color:rgba(255,255,255,.55);font-size:12px;margin-bottom:6px;letter-spacing:.5px">USERNAME</label>
+      <div style="margin-bottom:16px">
+        <label style="display:block;color:#4a5f7a;font-size:11.5px;font-weight:600;
+          margin-bottom:6px;letter-spacing:.8px">USERNAME</label>
         <input id="auth-username" type="text" autocomplete="username" spellcheck="false"
           style="width:100%;box-sizing:border-box;
-            background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-            border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;
-            outline:none;transition:border-color .2s"
-          onfocus="this.style.borderColor='rgba(0,102,204,.7)'"
-          onblur="this.style.borderColor='rgba(255,255,255,.12)'"
+            background:#f4f7fc;border:1.5px solid #d0dcea;
+            border-radius:10px;padding:11px 14px;color:#1a3055;font-size:15px;
+            outline:none;transition:border-color .2s,box-shadow .2s"
+          onfocus="this.style.borderColor='#2979c4';this.style.boxShadow='0 0 0 3px rgba(41,121,196,.12)'"
+          onblur="this.style.borderColor='#d0dcea';this.style.boxShadow='none'"
           placeholder="username">
       </div>
-      <div style="margin-bottom:24px">
-        <label style="display:block;color:rgba(255,255,255,.55);font-size:12px;margin-bottom:6px;letter-spacing:.5px">PASSWORD</label>
+      <div style="margin-bottom:22px">
+        <label style="display:block;color:#4a5f7a;font-size:11.5px;font-weight:600;
+          margin-bottom:6px;letter-spacing:.8px">PASSWORD</label>
         <input id="auth-password" type="password" autocomplete="current-password"
           style="width:100%;box-sizing:border-box;
-            background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-            border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;
-            outline:none;transition:border-color .2s"
-          onfocus="this.style.borderColor='rgba(0,102,204,.7)'"
-          onblur="this.style.borderColor='rgba(255,255,255,.12)'"
+            background:#f4f7fc;border:1.5px solid #d0dcea;
+            border-radius:10px;padding:11px 14px;color:#1a3055;font-size:15px;
+            outline:none;transition:border-color .2s,box-shadow .2s"
+          onfocus="this.style.borderColor='#2979c4';this.style.boxShadow='0 0 0 3px rgba(41,121,196,.12)'"
+          onblur="this.style.borderColor='#d0dcea';this.style.boxShadow='none'"
           placeholder="••••••••">
       </div>
       <button id="auth-submit-btn" onclick="_authDoLogin()" type="button"
-        style="width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;
-          background:linear-gradient(135deg,#0066cc,#0050a0);
-          color:#fff;font-size:15px;font-weight:600;letter-spacing:.3px;
-          transition:opacity .2s,transform .1s;box-shadow:0 4px 16px rgba(0,102,204,.35)">
+        style="width:100%;padding:12px;border-radius:10px;border:none;cursor:pointer;
+          background:linear-gradient(135deg,#1a6e3c,#2a9d5c);
+          color:#fff;font-size:15px;font-weight:600;letter-spacing:.4px;
+          transition:opacity .2s,transform .1s,box-shadow .2s;
+          box-shadow:0 4px 18px rgba(30,120,70,.28)">
         Sign In
       </button>
     </form>
 
-    <div style="text-align:center;margin-top:20px;color:rgba(255,255,255,.25);font-size:11px">
-      MPX Studio EA Portfolio &nbsp;·&nbsp; Secure Access
+    <!-- ── Disclaimer ── -->
+    <div style="
+      margin-top:22px;
+      border:1px solid #dde6f0;border-radius:10px;
+      padding:13px 15px;background:#f8fafd">
+      <div style="color:#556;font-size:10.5px;line-height:1.7;font-family:sans-serif">
+        This system is the exclusive intellectual property of <strong>Incognito Lab Ltd.</strong>,
+        designed to present a simulated view of Enterprise Architecture (EA) operations.
+        Access and use are limited to users explicitly authorized by Incognito Lab.
+        Reverse engineering, decompiling/disassembling, copying, modifying, distributing,
+        or reproducing this system (in whole or in part) without permission is strictly prohibited.
+      </div>
     </div>
+
   </div>
 </div>
 
 <style>
 @keyframes auth-pulse {
-  0%,100%{transform:scale(1);opacity:.6}
-  50%{transform:scale(1.15);opacity:1}
+  0%,100%{transform:scale(1);opacity:.5}
+  50%{transform:scale(1.18);opacity:.9}
 }
-#auth-login-overlay input::-webkit-input-placeholder{color:rgba(255,255,255,.2)}
+#auth-login-overlay input::-webkit-input-placeholder{color:rgba(26,48,85,.28)}
+#auth-login-overlay input::placeholder{color:rgba(26,48,85,.28)}
+#auth-submit-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 6px 24px rgba(30,120,70,.35)!important}
+#auth-submit-btn:active{transform:translateY(0);opacity:1}
 </style>
 
 
