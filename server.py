@@ -3003,6 +3003,11 @@ def r_roadmap_delete(item_id: str, current_user: dict = Depends(_require_writer)
     return {"message": "Deleted"}
 
 # ─── ROUTES ────────────────────────────────────────────────────────────────────
+@app.get("/health")
+def health_check():
+    """Public healthcheck endpoint for Railway — no auth required."""
+    return {"status": "ok", "version": APP_VERSION}
+
 @app.get("/api/version")
 def r_version(current_user: dict = Depends(_require_auth)):
     with get_db() as conn:
