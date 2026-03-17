@@ -8340,16 +8340,22 @@ async function renderSystemConfig(){
         <!-- Menu chips grid -->
         <div id="sc-menu-chips" style="display:flex;flex-wrap:wrap;gap:8px">
           ${[
-            {key:'dashboard',    icon:'📊', label:'Dashboard'},
-            {key:'inventory',    icon:'📦', label:'App Inventory'},
-            {key:'architecture', icon:'🏛️', label:'Architecture'},
-            {key:'planning',     icon:'🗓️', label:'Planning'},
-            {key:'analytics',    icon:'📈', label:'Analytics'},
-            {key:'asset',        icon:'🖥️', label:'Asset Mgmt'},
-            {key:'ops',          icon:'🔧', label:'Operations'},
-            {key:'vendor',       icon:'🤝', label:'Vendor'},
-            {key:'audit',        icon:'🪵', label:'Audit Logs'},
-            {key:'config',       icon:'⚙️', label:'System Config'},
+            {key:'dashboard',    icon:'🏠', label:'Overview'},
+            {key:'arb',          icon:'🏛️', label:'ARB'},
+            {key:'architecture', icon:'🏗️', label:'Architecture'},
+            {key:'business',     icon:'💼', label:'Business Arch'},
+            {key:'data',         icon:'🗄️', label:'Data Arch'},
+            {key:'apparch',      icon:'📱', label:'App Arch'},
+            {key:'techarch',     icon:'⚙️', label:'Tech Arch'},
+            {key:'security',     icon:'🔒', label:'Security Arch'},
+            {key:'planning',     icon:'📅', label:'Planning'},
+            {key:'inventory',    icon:'📊', label:'Project Portfolio'},
+            {key:'asset',        icon:'🏢', label:'Asset Mgmt'},
+            {key:'vendor',       icon:'🤝', label:'Vendor Mgmt'},
+            {key:'analytics',    icon:'📈', label:'Biz Analytics'},
+            {key:'ops',          icon:'🔧', label:'Tech Analytics'},
+            {key:'audit',        icon:'📉', label:'Asset Analytics'},
+            {key:'config',       icon:'🗂️', label:'Meta Data / Settings'},
           ].map(m=>`
             <button type="button" id="sc-menu-${m.key}" data-menu="${m.key}" onclick="_scToggleMenuChip('${m.key}')"
               style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit">
@@ -8368,7 +8374,7 @@ async function renderSystemConfig(){
 }
 
 // ── Menu chip helpers ──────────────────────────────────────────────────────────
-const _SC_MENUS = ['dashboard','inventory','architecture','planning','analytics','asset','ops','vendor','audit','config'];
+const _SC_MENUS = ['dashboard','arb','architecture','business','data','apparch','techarch','security','planning','inventory','asset','vendor','analytics','ops','audit','config'];
 
 function _scSetMenuChips(selectedMenus){
   const isAll = selectedMenus.includes('*');
