@@ -1,553 +1,400 @@
-#!/usr/bin/env python3
-"""
-seed_tech.py — Seed 100 Tech Stack entries into ea_domains.db
-Tables: tech_catalog, tech_versions, tech_servers, tech_usage, tech_radar
-"""
-import sqlite3, json, random
+"""Seed Tech Catalog — 100 entries with versions, radar, vulnerabilities."""
+import sqlite3, uuid, random
 from datetime import datetime, timedelta
 
-DB_PATH = "/Users/nuntapol/Desktop/bin/2.0 B32.43/ea_domains.db"
-APP_DB  = "/Users/nuntapol/Desktop/bin/2.0 B32.43/appport.db"
+DB = "ea_domains.db"
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-def ago(days): return (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
-def future(days): return (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+def uid(prefix): return f"{prefix}-" + uuid.uuid4().hex[:6].upper()
 
-# ── 100 Tech Catalog entries ──────────────────────────────────────────────────
-# (name, vendor, category, sub_category, tier, standard_status, tags, description)
-TECH_CATALOG = [
-    # ── Languages ────────────────────────────────────────────────────────────
-    ("Python",          "Python Software Foundation", "Language",   "Scripting",    "Tier 1","Approved",   ["open-source","interpreted"],        "General-purpose high-level language"),
-    ("Java",            "Oracle",                      "Language",   "OOP",          "Tier 1","Approved",   ["open-source","jvm","enterprise"],    "Enterprise-grade OOP language on JVM"),
-    ("Go",              "Google",                      "Language",   "Systems",      "Tier 2","Approved",   ["open-source","compiled","cloud"],    "Fast compiled language for cloud services"),
-    ("TypeScript",      "Microsoft",                   "Language",   "Web",          "Tier 1","Approved",   ["open-source","typed","frontend"],    "Typed superset of JavaScript"),
-    ("Kotlin",          "JetBrains",                   "Language",   "OOP",          "Tier 2","Approved",   ["jvm","android","modern"],            "Modern JVM language replacing Java"),
-    ("Rust",            "Rust Foundation",             "Language",   "Systems",      "Tier 3","Trial",      ["open-source","memory-safe"],         "Systems language with memory safety"),
-    ("C#",              "Microsoft",                   "Language",   "OOP",          "Tier 2","Approved",   ["dotnet","enterprise"],               ".NET ecosystem primary language"),
-    ("Scala",           "EPFL",                        "Language",   "Functional",   "Tier 3","Hold",       ["jvm","functional","spark"],          "Functional + OOP on JVM, used in Spark"),
-    ("R",               "R Foundation",                "Language",   "Data Science", "Tier 2","Approved",   ["open-source","statistics","data"],   "Statistical computing & visualization"),
-    ("Swift",           "Apple",                       "Language",   "Mobile",       "Tier 2","Approved",   ["ios","mobile","apple"],              "iOS/macOS native language"),
-
-    # ── Frameworks ───────────────────────────────────────────────────────────
-    ("Spring Boot",     "VMware/Broadcom",             "Framework",  "Web Backend",  "Tier 1","Approved",   ["java","microservices","enterprise"],  "Java microservice framework"),
-    ("FastAPI",         "Sebastián Ramírez",           "Framework",  "Web Backend",  "Tier 1","Approved",   ["python","async","openapi"],           "Modern async Python web framework"),
-    ("React",           "Meta",                        "Framework",  "Frontend",     "Tier 1","Approved",   ["javascript","spa","frontend"],        "UI component library for SPA"),
-    ("Angular",         "Google",                      "Framework",  "Frontend",     "Tier 2","Approved",   ["typescript","spa","enterprise"],      "Full-featured frontend framework"),
-    ("Vue.js",          "Evan You",                    "Framework",  "Frontend",     "Tier 2","Approved",   ["javascript","spa","lightweight"],     "Progressive JavaScript framework"),
-    ("Django",          "Django Software Foundation",  "Framework",  "Web Backend",  "Tier 2","Approved",   ["python","fullstack","orm"],           "Batteries-included Python web framework"),
-    ("Express.js",      "OpenJS Foundation",           "Framework",  "Web Backend",  "Tier 2","Approved",   ["nodejs","rest","lightweight"],        "Minimal Node.js web framework"),
-    ("Next.js",         "Vercel",                      "Framework",  "Frontend",     "Tier 2","Approved",   ["react","ssr","fullstack"],            "React SSR/SSG framework"),
-    ("Quarkus",         "Red Hat",                     "Framework",  "Web Backend",  "Tier 3","Trial",      ["java","cloud-native","graalvm"],      "Kubernetes-native Java framework"),
-    ("Flutter",         "Google",                      "Framework",  "Mobile",       "Tier 2","Approved",   ["dart","mobile","cross-platform"],    "Cross-platform mobile UI framework"),
-
-    # ── Databases – RDBMS ────────────────────────────────────────────────────
-    ("PostgreSQL",      "PostgreSQL Global Dev Group", "Database",   "RDBMS",        "Tier 1","Approved",   ["open-source","relational","acid"],    "Advanced open-source RDBMS"),
-    ("MySQL",           "Oracle",                      "Database",   "RDBMS",        "Tier 2","Approved",   ["open-source","relational"],           "Widely-used open-source RDBMS"),
-    ("Microsoft SQL Server","Microsoft",               "Database",   "RDBMS",        "Tier 1","Approved",   ["microsoft","enterprise","windows"],   "Enterprise-grade RDBMS by Microsoft"),
-    ("Oracle Database", "Oracle",                      "Database",   "RDBMS",        "Tier 1","Approved",   ["enterprise","commercial","acid"],     "Enterprise RDBMS with advanced features"),
-    ("MariaDB",         "MariaDB Foundation",          "Database",   "RDBMS",        "Tier 3","Hold",       ["open-source","mysql-compatible"],     "MySQL fork, may be superseded"),
-
-    # ── Databases – NoSQL ────────────────────────────────────────────────────
-    ("MongoDB",         "MongoDB Inc.",                "Database",   "Document",     "Tier 1","Approved",   ["nosql","document","flexible-schema"], "Document-oriented NoSQL database"),
-    ("Redis",           "Redis Ltd.",                  "Database",   "In-Memory",    "Tier 1","Approved",   ["cache","session","pub-sub"],          "In-memory data structure store"),
-    ("Elasticsearch",   "Elastic",                     "Database",   "Search",       "Tier 1","Approved",   ["search","analytics","logging"],       "Distributed search & analytics engine"),
-    ("Apache Cassandra","Apache",                      "Database",   "Wide-Column",  "Tier 2","Approved",   ["open-source","distributed","nosql"],  "Distributed wide-column store"),
-    ("ClickHouse",      "ClickHouse Inc.",             "Database",   "OLAP",         "Tier 2","Approved",   ["analytics","columnar","fast"],        "Column-oriented OLAP database"),
-
-    # ── Messaging ────────────────────────────────────────────────────────────
-    ("Apache Kafka",    "Apache",                      "Messaging",  "Event Stream", "Tier 1","Approved",   ["open-source","streaming","event"],    "Distributed event streaming platform"),
-    ("RabbitMQ",        "Broadcom/VMware",             "Messaging",  "Message Queue","Tier 2","Approved",   ["amqp","queue","async"],              "Open-source message broker"),
-    ("AWS SQS",         "Amazon",                      "Messaging",  "Cloud Queue",  "Tier 2","Approved",   ["cloud","aws","managed"],             "Fully managed message queue service"),
-    ("Azure Service Bus","Microsoft",                  "Messaging",  "Cloud Queue",  "Tier 2","Approved",   ["cloud","azure","enterprise"],        "Cloud messaging service for Azure"),
-    ("NATS",            "CNCF",                        "Messaging",  "Event Stream", "Tier 3","Trial",      ["cloud-native","lightweight","fast"],  "High-performance messaging system"),
-
-    # ── Infrastructure / Platform ─────────────────────────────────────────────
-    ("Kubernetes",      "CNCF",                        "Platform",   "Container Orchestration","Tier 1","Approved",["open-source","k8s","cloud-native"],"Container orchestration platform"),
-    ("Docker",          "Docker Inc.",                 "Platform",   "Container",    "Tier 1","Approved",   ["container","devops","oci"],           "Container platform & runtime"),
-    ("Helm",            "CNCF",                        "Platform",   "Package Manager","Tier 1","Approved", ["kubernetes","chart","deployment"],    "Kubernetes package manager"),
-    ("Terraform",       "HashiCorp",                   "Tool",       "IaC",          "Tier 1","Approved",   ["iac","devops","multi-cloud"],         "Infrastructure as Code tool"),
-    ("Ansible",         "Red Hat",                     "Tool",       "Config Mgmt",  "Tier 2","Approved",   ["automation","config","agentless"],   "Agentless IT automation"),
-    ("ArgoCD",          "CNCF",                        "Tool",       "GitOps",       "Tier 1","Approved",   ["gitops","kubernetes","cd"],           "GitOps CD for Kubernetes"),
-
-    # ── Cloud Providers ───────────────────────────────────────────────────────
-    ("AWS EC2",         "Amazon",                      "Cloud",      "Compute",      "Tier 1","Approved",   ["aws","compute","virtual-machine"],    "Amazon EC2 virtual compute"),
-    ("AWS RDS",         "Amazon",                      "Cloud",      "Managed DB",   "Tier 1","Approved",   ["aws","database","managed"],           "Amazon managed relational DB"),
-    ("AWS S3",          "Amazon",                      "Cloud",      "Object Storage","Tier 1","Approved",  ["aws","storage","object"],             "Amazon object storage service"),
-    ("Azure AKS",       "Microsoft",                   "Cloud",      "Managed K8s",  "Tier 1","Approved",   ["azure","kubernetes","managed"],       "Azure managed Kubernetes service"),
-    ("Azure Blob Storage","Microsoft",                 "Cloud",      "Object Storage","Tier 2","Approved",  ["azure","storage","object"],           "Azure object storage service"),
-    ("GCP BigQuery",    "Google",                      "Cloud",      "Data Warehouse","Tier 2","Approved",  ["gcp","analytics","serverless"],       "Google serverless data warehouse"),
-    ("GCP GKE",         "Google",                      "Cloud",      "Managed K8s",  "Tier 2","Approved",   ["gcp","kubernetes","managed"],        "Google managed Kubernetes Engine"),
-
+TECH_DATA = [
+    # (name, vendor, category, sub_category, tier, status, website)
+    # ── Languages ──────────────────────────────────────────────────────────────
+    ("Python",          "Python Software Foundation", "Language", "General Purpose",  "Tier 1", "Approved",    "python.org"),
+    ("Java",            "Oracle",                     "Language", "General Purpose",  "Tier 1", "Approved",    "java.com"),
+    ("TypeScript",      "Microsoft",                  "Language", "Web/JS",           "Tier 1", "Approved",    "typescriptlang.org"),
+    ("JavaScript",      "ECMA International",         "Language", "Web/JS",           "Tier 1", "Approved",    "ecma-international.org"),
+    ("Go",              "Google",                     "Language", "Systems",          "Tier 2", "Approved",    "go.dev"),
+    ("Kotlin",          "JetBrains",                  "Language", "JVM",              "Tier 2", "Approved",    "kotlinlang.org"),
+    ("Rust",            "Rust Foundation",            "Language", "Systems",          "Tier 3", "Assess",      "rust-lang.org"),
+    ("C#",              "Microsoft",                  "Language", "General Purpose",  "Tier 2", "Approved",    "dotnet.microsoft.com"),
+    ("PHP",             "The PHP Group",              "Language", "Web",              "Tier 3", "Hold",        "php.net"),
+    ("Ruby",            "Ruby Association",           "Language", "General Purpose",  "Tier 3", "Hold",        "ruby-lang.org"),
+    ("Swift",           "Apple",                      "Language", "Mobile/Systems",   "Tier 2", "Approved",    "swift.org"),
+    ("Scala",           "EPFL",                       "Language", "JVM/Functional",   "Tier 3", "Hold",        "scala-lang.org"),
+    # ── Frameworks ─────────────────────────────────────────────────────────────
+    ("FastAPI",         "Sebastián Ramírez",          "Framework","Web/API",          "Tier 1", "Approved",    "fastapi.tiangolo.com"),
+    ("React",           "Meta",                       "Framework","Frontend",         "Tier 1", "Approved",    "react.dev"),
+    ("Spring Boot",     "VMware Tanzu",               "Framework","Web/API",          "Tier 1", "Approved",    "spring.io"),
+    ("Next.js",         "Vercel",                     "Framework","Full-Stack Web",   "Tier 1", "Approved",    "nextjs.org"),
+    ("Vue.js",          "Evan You",                   "Framework","Frontend",         "Tier 2", "Approved",    "vuejs.org"),
+    ("Angular",         "Google",                     "Framework","Frontend",         "Tier 2", "Approved",    "angular.io"),
+    ("Django",          "Django Software Foundation", "Framework","Web/API",          "Tier 2", "Approved",    "djangoproject.com"),
+    ("Express.js",      "OpenJS Foundation",          "Framework","Web/API",          "Tier 2", "Approved",    "expressjs.com"),
+    ("NestJS",          "Kamil Myśliwiec",            "Framework","Web/API",          "Tier 2", "Trial",       "nestjs.com"),
+    ("Gin",             "gin-gonic",                  "Framework","Web/API",          "Tier 2", "Trial",       "gin-gonic.com"),
+    ("Laravel",         "Taylor Otwell",              "Framework","Web/API",          "Tier 3", "Hold",        "laravel.com"),
+    ("ASP.NET Core",    "Microsoft",                  "Framework","Web/API",          "Tier 2", "Approved",    "dotnet.microsoft.com"),
+    # ── Databases ─────────────────────────────────────────────────────────────
+    ("PostgreSQL",      "PostgreSQL Global Dev Group","Database", "RDBMS",            "Tier 1", "Approved",    "postgresql.org"),
+    ("MySQL",           "Oracle",                     "Database", "RDBMS",            "Tier 1", "Approved",    "mysql.com"),
+    ("MongoDB",         "MongoDB Inc.",               "Database", "NoSQL/Document",   "Tier 2", "Approved",    "mongodb.com"),
+    ("Redis",           "Redis Ltd.",                 "Database", "In-Memory/Cache",  "Tier 1", "Approved",    "redis.io"),
+    ("Elasticsearch",   "Elastic",                    "Database", "Search/Analytics", "Tier 2", "Approved",    "elastic.co"),
+    ("SQLite",          "D. Richard Hipp",            "Database", "Embedded RDBMS",   "Tier 2", "Approved",    "sqlite.org"),
+    ("Microsoft SQL Server","Microsoft",              "Database", "RDBMS",            "Tier 2", "Approved",    "microsoft.com/sql-server"),
+    ("Oracle Database", "Oracle",                     "Database", "RDBMS",            "Tier 2", "Hold",        "oracle.com"),
+    ("Cassandra",       "Apache Foundation",          "Database", "NoSQL/Wide-Column","Tier 3", "Assess",      "cassandra.apache.org"),
+    ("ClickHouse",      "ClickHouse Inc.",            "Database", "OLAP/Analytics",   "Tier 2", "Trial",       "clickhouse.com"),
+    # ── Platforms / Runtime ────────────────────────────────────────────────────
+    ("Kubernetes",      "CNCF",                       "Platform", "Container Orchestration","Tier 1","Approved","kubernetes.io"),
+    ("Docker",          "Docker Inc.",                "Platform", "Containerization", "Tier 1", "Approved",    "docker.com"),
+    ("Apache Kafka",    "Apache Foundation",          "Platform", "Messaging/Streaming","Tier 1","Approved",   "kafka.apache.org"),
+    ("RabbitMQ",        "VMware",                     "Platform", "Messaging",        "Tier 2", "Hold",        "rabbitmq.com"),
+    ("AWS",             "Amazon",                     "Platform", "Cloud",            "Tier 1", "Approved",    "aws.amazon.com"),
+    ("Azure",           "Microsoft",                  "Platform", "Cloud",            "Tier 1", "Approved",    "azure.microsoft.com"),
+    ("GCP",             "Google",                     "Platform", "Cloud",            "Tier 2", "Approved",    "cloud.google.com"),
+    ("Nginx",           "F5 Inc.",                    "Platform", "Web Server/Proxy", "Tier 1", "Approved",    "nginx.com"),
+    ("Node.js",         "OpenJS Foundation",          "Platform", "Runtime",          "Tier 1", "Approved",    "nodejs.org"),
+    ("Apache Tomcat",   "Apache Foundation",          "Platform", "Java Runtime",     "Tier 2", "Approved",    "tomcat.apache.org"),
+    ("Istio",           "CNCF",                       "Platform", "Service Mesh",     "Tier 2", "Trial",       "istio.io"),
+    # ── Tools ─────────────────────────────────────────────────────────────────
+    ("GitLab",          "GitLab Inc.",                "Tool",     "DevOps/SCM",       "Tier 1", "Approved",    "gitlab.com"),
+    ("GitHub",          "Microsoft",                  "Tool",     "SCM",              "Tier 1", "Approved",    "github.com"),
+    ("Jenkins",         "Jenkins Community",          "Tool",     "CI/CD",            "Tier 2", "Hold",        "jenkins.io"),
+    ("GitHub Actions",  "Microsoft",                  "Tool",     "CI/CD",            "Tier 1", "Approved",    "github.com/features/actions"),
+    ("ArgoCD",          "CNCF",                       "Tool",     "GitOps/CD",        "Tier 1", "Approved",    "argoproj.github.io"),
+    ("Terraform",       "HashiCorp",                  "Tool",     "IaC",              "Tier 1", "Approved",    "terraform.io"),
+    ("Ansible",         "Red Hat",                    "Tool",     "Config Management","Tier 2", "Approved",    "ansible.com"),
+    ("SonarQube",       "SonarSource",                "Tool",     "Code Quality",     "Tier 1", "Approved",    "sonarsource.com"),
+    ("Prometheus",      "CNCF",                       "Tool",     "Monitoring",       "Tier 1", "Approved",    "prometheus.io"),
+    ("Grafana",         "Grafana Labs",               "Tool",     "Observability",    "Tier 1", "Approved",    "grafana.com"),
+    ("Jaeger",          "CNCF",                       "Tool",     "Distributed Tracing","Tier 2","Trial",      "jaegertracing.io"),
+    ("Kibana",          "Elastic",                    "Tool",     "Log Visualization","Tier 2", "Approved",    "elastic.co"),
+    ("Vault",           "HashiCorp",                  "Tool",     "Secrets Management","Tier 1","Approved",    "vaultproject.io"),
+    ("Helm",            "CNCF",                       "Tool",     "K8s Package Mgr",  "Tier 1", "Approved",    "helm.sh"),
+    ("Apache Airflow",  "Apache Foundation",          "Tool",     "Workflow/Pipeline","Tier 2", "Approved",    "airflow.apache.org"),
+    ("dbt",             "dbt Labs",                   "Tool",     "Data Transform",   "Tier 2", "Trial",       "getdbt.com"),
+    ("Postman",         "Postman Inc.",               "Tool",     "API Testing",      "Tier 2", "Approved",    "postman.com"),
+    ("JIRA",            "Atlassian",                  "Tool",     "Project Mgmt",     "Tier 2", "Approved",    "atlassian.com"),
+    # ── Infrastructure / OS ────────────────────────────────────────────────────
+    ("Ubuntu Server",   "Canonical",                  "Infrastructure","Linux OS",    "Tier 1", "Approved",    "ubuntu.com"),
+    ("Red Hat Enterprise Linux","Red Hat",            "Infrastructure","Linux OS",    "Tier 1", "Approved",    "redhat.com"),
+    ("Windows Server",  "Microsoft",                  "Infrastructure","OS",          "Tier 2", "Approved",    "microsoft.com"),
+    ("VMware vSphere",  "Broadcom",                   "Infrastructure","Virtualization","Tier 2","Hold",       "vmware.com"),
+    ("Proxmox VE",      "Proxmox Server Solutions",   "Infrastructure","Virtualization","Tier 2","Trial",      "proxmox.com"),
+    ("HAProxy",         "HAProxy Technologies",       "Infrastructure","Load Balancer","Tier 2","Approved",    "haproxy.com"),
+    ("AWS S3",          "Amazon",                     "Infrastructure","Object Storage","Tier 1","Approved",   "aws.amazon.com/s3"),
+    ("AWS RDS",         "Amazon",                     "Infrastructure","Managed DB",  "Tier 1", "Approved",   "aws.amazon.com/rds"),
+    ("AWS EKS",         "Amazon",                     "Infrastructure","Managed K8s", "Tier 1", "Approved",   "aws.amazon.com/eks"),
+    ("Azure AKS",       "Microsoft",                  "Infrastructure","Managed K8s", "Tier 2", "Approved",   "azure.microsoft.com"),
+    ("Cloudflare",      "Cloudflare Inc.",            "Infrastructure","CDN/Security","Tier 1", "Approved",   "cloudflare.com"),
     # ── Security ──────────────────────────────────────────────────────────────
-    ("HashiCorp Vault",  "HashiCorp",                  "Security",   "Secrets Mgmt", "Tier 1","Approved",   ["secrets","pki","encryption"],         "Secrets management & encryption"),
-    ("Keycloak",         "Red Hat",                    "Security",   "IAM",          "Tier 1","Approved",   ["iam","sso","oauth2","oidc"],           "Open-source identity & access mgmt"),
-    ("SonarQube",        "SonarSource",                "Security",   "Code Quality", "Tier 1","Approved",   ["sast","code-quality","devsecops"],    "Code quality & security scanner"),
-    ("OWASP ZAP",        "OWASP",                      "Security",   "DAST",         "Tier 2","Approved",   ["dast","pen-test","open-source"],      "Dynamic application security testing"),
-    ("Trivy",            "Aqua Security",              "Security",   "Container Scan","Tier 1","Approved",  ["vulnerability","container","iac"],    "Container & IaC vulnerability scanner"),
-    ("Falco",            "CNCF",                       "Security",   "Runtime Sec",  "Tier 2","Trial",      ["runtime","kubernetes","detection"],   "Cloud-native runtime security"),
-
-    # ── Observability ─────────────────────────────────────────────────────────
-    ("Prometheus",       "CNCF",                       "Observability","Metrics",    "Tier 1","Approved",   ["monitoring","metrics","open-source"], "Monitoring & alerting toolkit"),
-    ("Grafana",          "Grafana Labs",               "Observability","Dashboard",  "Tier 1","Approved",   ["dashboard","visualization","metrics"],"Observability & analytics platform"),
-    ("Elastic APM",      "Elastic",                    "Observability","APM",        "Tier 2","Approved",   ["apm","tracing","performance"],        "Application performance monitoring"),
-    ("Jaeger",           "CNCF",                       "Observability","Tracing",    "Tier 2","Approved",   ["tracing","distributed","open-source"],"Distributed tracing system"),
-    ("OpenTelemetry",    "CNCF",                       "Observability","Telemetry",  "Tier 1","Approved",   ["otel","standard","observability"],    "Observability instrumentation standard"),
-    ("Loki",             "Grafana Labs",               "Observability","Logging",    "Tier 2","Approved",   ["logging","grafana","lightweight"],    "Log aggregation system"),
-
-    # ── DevOps / CI-CD ────────────────────────────────────────────────────────
-    ("Jenkins",          "CloudBees/Community",        "Tool",       "CI/CD",        "Tier 2","Hold",       ["ci","java","legacy"],                 "Legacy CI/CD; plan to migrate"),
-    ("GitLab CI",        "GitLab",                     "Tool",       "CI/CD",        "Tier 1","Approved",   ["ci-cd","devops","integrated"],        "Integrated GitLab CI/CD pipeline"),
-    ("GitHub Actions",   "GitHub/Microsoft",           "Tool",       "CI/CD",        "Tier 1","Approved",   ["ci-cd","github","cloud"],             "Native GitHub automation & CI/CD"),
-    ("Nexus Repository", "Sonatype",                   "Tool",       "Artifact Registry","Tier 1","Approved",["artifact","maven","npm"],            "Universal artifact repository manager"),
-    ("Harbor",           "CNCF",                       "Tool",       "Container Registry","Tier 2","Approved",["registry","container","oci"],       "Cloud-native container registry"),
-    ("SonarCloud",       "SonarSource",                "Tool",       "Code Quality", "Tier 2","Approved",   ["sast","cloud","code-quality"],        "Cloud-based code quality analysis"),
-
-    # ── API / Integration ────────────────────────────────────────────────────
-    ("Kong Gateway",     "Kong Inc.",                  "Platform",   "API Gateway",  "Tier 1","Approved",   ["api-gateway","proxy","plugins"],      "Open-source API gateway"),
-    ("Apigee",           "Google/Apigee",              "Platform",   "API Gateway",  "Tier 2","Approved",   ["api-management","gcp","analytics"],   "Full lifecycle API management"),
-    ("MuleSoft",         "Salesforce",                 "Platform",   "ESB/iPaaS",    "Tier 2","Approved",   ["integration","esb","enterprise"],    "Enterprise integration platform"),
-    ("Apache Camel",     "Apache",                     "Framework",  "Integration",  "Tier 2","Approved",   ["open-source","eip","microservices"],  "Enterprise integration patterns library"),
-    ("WSO2 API Manager", "WSO2",                       "Platform",   "API Gateway",  "Tier 3","Hold",       ["api","wso2","on-premise"],            "On-prem API management; under review"),
-
-    # ── Data & Analytics ─────────────────────────────────────────────────────
-    ("Apache Spark",     "Apache",                     "Platform",   "Big Data",     "Tier 1","Approved",   ["big-data","streaming","ml"],          "Unified analytics engine for big data"),
-    ("Apache Airflow",   "Apache",                     "Tool",       "Workflow",     "Tier 1","Approved",   ["dag","etl","scheduler"],              "Workflow orchestration platform"),
-    ("dbt",              "dbt Labs",                   "Tool",       "Data Transform","Tier 2","Approved",  ["sql","transformation","analytics"],   "SQL-first data transformation tool"),
-    ("Databricks",       "Databricks",                 "Platform",   "Data Platform","Tier 1","Approved",   ["lakehouse","spark","ml"],             "Unified data analytics platform"),
-    ("Apache Flink",     "Apache",                     "Platform",   "Streaming",    "Tier 2","Trial",      ["streaming","realtime","stateful"],    "Stateful stream processing engine"),
-    ("Tableau",          "Salesforce",                 "Tool",       "BI/Viz",       "Tier 2","Approved",   ["bi","visualization","dashboard"],     "Business intelligence & analytics"),
-    ("Power BI",         "Microsoft",                  "Tool",       "BI/Viz",       "Tier 1","Approved",   ["bi","microsoft","dashboard"],         "Microsoft business intelligence tool"),
-
-    # ── ML / AI ──────────────────────────────────────────────────────────────
-    ("TensorFlow",       "Google",                     "Framework",  "ML/DL",        "Tier 2","Approved",   ["ml","deep-learning","python"],        "Open-source machine learning platform"),
-    ("PyTorch",          "Meta",                       "Framework",  "ML/DL",        "Tier 2","Approved",   ["ml","deep-learning","research"],     "Dynamic deep learning framework"),
-    ("MLflow",           "Databricks",                 "Tool",       "ML Lifecycle", "Tier 2","Approved",   ["mlops","experiment","registry"],     "ML lifecycle management platform"),
-    ("Hugging Face",     "Hugging Face",               "Platform",   "LLM/NLP",      "Tier 3","Trial",      ["llm","nlp","transformers"],           "Open-source ML model hub & library"),
-    ("LangChain",        "LangChain Inc.",             "Framework",  "LLM/Agents",   "Tier 3","Trial",      ["llm","agents","rag"],                 "LLM application development framework"),
-    ("Ray",              "Anyscale",                   "Platform",   "Distributed ML","Tier 3","Trial",     ["distributed","ml","python"],         "Distributed computing for AI/ML"),
-
-    # ── OS / Runtime ─────────────────────────────────────────────────────────
-    ("Ubuntu Server",    "Canonical",                  "OS",         "Linux",        "Tier 1","Approved",   ["linux","server","lts"],               "Enterprise Ubuntu LTS server OS"),
-    ("Red Hat Enterprise Linux","Red Hat",             "OS",         "Linux",        "Tier 1","Approved",   ["linux","enterprise","rhel"],          "Enterprise Linux by Red Hat"),
-    ("Windows Server",   "Microsoft",                  "OS",         "Windows",      "Tier 2","Approved",   ["windows","microsoft","enterprise"],   "Microsoft Windows Server OS"),
-    ("Alpine Linux",     "Alpine Linux Project",       "OS",         "Linux",        "Tier 2","Approved",   ["container","minimal","musl"],         "Minimal Linux for containers"),
-    ("Node.js",          "OpenJS Foundation",          "Runtime",    "JavaScript",   "Tier 1","Approved",   ["javascript","server","async"],        "JavaScript runtime on V8 engine"),
-    ("JVM (OpenJDK)",    "OpenJDK Community",          "Runtime",    "JVM",          "Tier 1","Approved",   ["java","jvm","open-source"],           "Open-source Java Virtual Machine"),
-
-    # ── Networking / Service Mesh ────────────────────────────────────────────
-    ("Istio",            "CNCF",                       "Platform",   "Service Mesh", "Tier 1","Approved",   ["service-mesh","kubernetes","mtls"],   "Service mesh for microservices"),
-    ("Nginx",            "F5/Nginx",                   "Platform",   "Web Server",   "Tier 1","Approved",   ["web-server","proxy","load-balancer"], "High-performance web server & proxy"),
-    ("HAProxy",          "HAProxy Technologies",       "Platform",   "Load Balancer","Tier 2","Approved",   ["load-balancer","tcp","ha"],           "Reliable high-performance load balancer"),
-    ("Consul",           "HashiCorp",                  "Platform",   "Service Discovery","Tier 2","Approved",["service-discovery","dns","config"],  "Service discovery & configuration"),
-
-    # ── Storage ───────────────────────────────────────────────────────────────
-    ("MinIO",            "MinIO Inc.",                 "Storage",    "Object Storage","Tier 2","Approved",  ["s3-compatible","on-prem","open-source"],"S3-compatible on-premise storage"),
-    ("Ceph",             "CNCF",                       "Storage",    "Distributed FS","Tier 2","Approved",  ["distributed","block","object","file"], "Distributed storage cluster"),
-    ("Longhorn",         "CNCF",                       "Storage",    "Block Storage","Tier 2","Approved",   ["kubernetes","persistent","csi"],      "Cloud-native block storage for K8s"),
-
-    # ── Legacy / Retiring ─────────────────────────────────────────────────────
-    ("SOAP/WS",          "W3C",                        "Protocol",   "Web Services", "Tier 4","Deprecated", ["legacy","soap","xml"],                "SOAP-based web services; decommissioning"),
-    ("Oracle WebLogic",  "Oracle",                     "Platform",   "App Server",   "Tier 3","Hold",       ["java","app-server","legacy"],         "Oracle Java EE app server; migration planned"),
-    ("IBM MQ",           "IBM",                        "Messaging",  "Message Queue","Tier 3","Hold",       ["ibm","messaging","enterprise"],       "IBM enterprise messaging; evaluating replacement"),
-    ("Crystal Reports",  "SAP",                        "Tool",       "Reporting",    "Tier 4","Deprecated", ["legacy","reporting","sap"],           "Legacy Crystal Reports; replacing with Power BI"),
-    ("Subversion (SVN)", "Apache",                     "Tool",       "VCS",          "Tier 4","Deprecated", ["legacy","vcs","cvs"],                 "Legacy VCS; migrated to Git"),
+    ("Keycloak",        "Red Hat",                    "Security",  "IAM/SSO",         "Tier 1", "Approved",   "keycloak.org"),
+    ("OWASP ZAP",       "OWASP",                      "Security",  "DAST/Scanning",   "Tier 2", "Approved",   "owasp.org"),
+    ("Trivy",           "Aqua Security",              "Security",  "Container Scan",  "Tier 1", "Approved",   "trivy.dev"),
+    ("Snyk",            "Snyk Ltd.",                  "Security",  "SCA/SAST",        "Tier 2", "Trial",      "snyk.io"),
+    ("HashiCorp Vault", "HashiCorp",                  "Security",  "Secrets/PKI",     "Tier 1", "Approved",   "vaultproject.io"),
+    ("Cert-Manager",    "CNCF",                       "Security",  "TLS Automation",  "Tier 2", "Approved",   "cert-manager.io"),
+    # ── Library ───────────────────────────────────────────────────────────────
+    ("SQLAlchemy",      "Michael Bayer",              "Library",   "ORM/Python",      "Tier 1", "Approved",   "sqlalchemy.org"),
+    ("Pydantic",        "Samuel Colvin",              "Library",   "Validation/Python","Tier 1","Approved",   "pydantic.dev"),
+    ("Axios",           "Matt Zabriskie",             "Library",   "HTTP/JavaScript", "Tier 1", "Approved",   "axios-http.com"),
+    ("Lodash",          "JS Foundation",              "Library",   "Utility/JavaScript","Tier 2","Approved",  "lodash.com"),
+    ("Pandas",          "NumFOCUS",                   "Library",   "Data/Python",     "Tier 1", "Approved",   "pandas.pydata.org"),
+    ("NumPy",           "NumFOCUS",                   "Library",   "Scientific/Python","Tier 2","Approved",   "numpy.org"),
+    ("Apache Log4j",    "Apache Foundation",          "Library",   "Logging/Java",    "Tier 3", "Hold",       "logging.apache.org"),
+    # ── Messaging / Integration ────────────────────────────────────────────────
+    ("Kong Gateway",    "Kong Inc.",                  "Platform",  "API Gateway",     "Tier 1", "Approved",   "konghq.com"),
+    ("AWS SQS",         "Amazon",                     "Platform",  "Message Queue",   "Tier 2", "Approved",   "aws.amazon.com/sqs"),
+    ("Apache ActiveMQ", "Apache Foundation",          "Platform",  "Messaging",       "Tier 3", "Deprecated", "activemq.apache.org"),
+    # ── Analytics / BI ────────────────────────────────────────────────────────
+    ("Apache Spark",    "Apache Foundation",          "Platform",  "Data Processing", "Tier 2", "Approved",   "spark.apache.org"),
+    ("Power BI",        "Microsoft",                  "Tool",      "Business Intelligence","Tier 1","Approved","powerbi.microsoft.com"),
+    ("Tableau",         "Salesforce",                 "Tool",      "Business Intelligence","Tier 2","Approved","tableau.com"),
+    ("Apache Superset", "Apache Foundation",          "Tool",      "BI/Self-service", "Tier 2", "Trial",      "superset.apache.org"),
+    ("dbt Core",        "dbt Labs",                   "Tool",      "Data Transform",  "Tier 2", "Trial",      "getdbt.com"),
+    # ── AI / ML ───────────────────────────────────────────────────────────────
+    ("TensorFlow",      "Google",                     "Library",   "Machine Learning","Tier 2", "Approved",   "tensorflow.org"),
+    ("PyTorch",         "Meta",                       "Library",   "Machine Learning","Tier 2", "Approved",   "pytorch.org"),
+    ("LangChain",       "LangChain Inc.",             "Library",   "LLM/AI",          "Tier 3", "Assess",     "langchain.com"),
+    ("OpenAI API",      "OpenAI",                     "Platform",  "LLM/AI",          "Tier 2", "Trial",      "openai.com"),
 ]
 
-# ── Version data: (tech_name, versions[]) ────────────────────────────────────
-# Each version: (label, major, minor, patch, type, release_date, eol_date, lifecycle, is_latest, is_lts)
-TECH_VERSIONS = {
-    "Python":           [
-        ("3.12.3", 3,12,3,"GA",  ago(180), future(365*2), "Active",    1, 0),
-        ("3.11.9", 3,11,9,"LTS", ago(400), future(365),   "Active",    0, 1),
-        ("3.10.14",3,10,14,"LTS",ago(730), ago(90),       "EOL",       0, 1),
-        ("3.9.19", 3, 9,19,"LTS",ago(1200),ago(30),       "EOL",       0, 1),
+VERSIONS = {
+    "Python":       [("3.12.3","3","12","3","2024-05-15","2028-10","GA",1,1),("3.11.9","3","11","9","2024-04-02","2027-10","LTS",0,1),("3.10.14","3","10","14","2024-03-19","2026-10","Maintenance",0,0)],
+    "Java":         [("21.0.3","21","0","3","2024-04-16","2031-09","LTS",1,1),("17.0.11","17","0","11","2024-04-16","2029-09","LTS",0,1),("11.0.23","11","0","23","2024-04-16","2026-09","LTS",0,0)],
+    "TypeScript":   [("5.4.5","5","4","5","2024-04-03","—","GA",1,0),("5.3.3","5","3","3","2024-01-10","—","GA",0,0)],
+    "JavaScript":   [("ES2024","ES2024","0","0","2024-06-01","—","GA",1,0)],
+    "Go":           [("1.22.3","1","22","3","2024-05-07","—","GA",1,0),("1.21.10","1","21","10","2024-05-07","—","Maintenance",0,0)],
+    "Kotlin":       [("2.0.0","2","0","0","2024-05-21","—","GA",1,0),("1.9.24","1","9","24","2024-05-23","—","Maintenance",0,0)],
+    "Rust":         [("1.78.0","1","78","0","2024-05-02","—","GA",1,0)],
+    "C#":           [("12.0","12","0","0","2023-11-14","—","GA",1,0),("11.0","11","0","0","2022-11-08","—","Maintenance",0,0)],
+    "PHP":          [("8.3.7","8","3","7","2024-05-09","2027-11","GA",1,0),("8.2.19","8","2","19","2024-05-09","2026-12","Maintenance",0,0)],
+    "FastAPI":      [("0.111.0","0","111","0","2024-04-25","—","GA",1,0),("0.110.3","0","110","3","2024-04-15","—","GA",0,0)],
+    "React":        [("18.3.1","18","3","1","2024-04-26","—","GA",1,0),("18.2.0","18","2","0","2022-06-14","—","Maintenance",0,0)],
+    "Spring Boot":  [("3.2.5","3","2","5","2024-05-16","2025-02","GA",1,0),("3.1.11","3","1","11","2024-04-17","2024-11","Maintenance",0,0),("2.7.18","2","7","18","2024-02-22","2023-11","EOL",0,0)],
+    "Next.js":      [("14.2.3","14","2","3","2024-05-07","—","GA",1,0),("13.5.6","13","5","6","2023-10-16","—","Maintenance",0,0)],
+    "Vue.js":       [("3.4.26","3","4","26","2024-04-24","—","GA",1,0),("2.7.16","2","7","16","2023-12-01","2025-12","Maintenance",0,0)],
+    "Django":       [("5.0.6","5","0","6","2024-05-01","2025-04","GA",1,0),("4.2.13","4","2","13","2024-05-01","2026-04","LTS",0,1)],
+    "PostgreSQL":   [("16.3","16","3","0","2024-05-09","2028-11","GA",1,0),("15.7","15","7","0","2024-05-09","2027-11","Maintenance",0,0),("14.12","14","12","0","2024-05-09","2026-11","Maintenance",0,0),("13.15","13","15","0","2024-05-09","2025-11","Maintenance",0,0)],
+    "MySQL":        [("8.4.0","8","4","0","2024-04-30","2032-04","LTS",1,1),("8.0.37","8","0","37","2024-04-30","2026-04","Maintenance",0,0)],
+    "MongoDB":      [("7.0.9","7","0","9","2024-04-30","2027-08","GA",1,0),("6.0.15","6","0","15","2024-04-30","2025-07","Maintenance",0,0)],
+    "Redis":        [("7.2.5","7","2","5","2024-05-01","2027-01","GA",1,0),("7.0.15","7","0","15","2024-01-10","2026-01","Maintenance",0,0)],
+    "Kubernetes":   [("1.30.1","1","30","1","2024-05-22","2025-06","GA",1,0),("1.29.5","1","29","5","2024-05-22","2025-02","Maintenance",0,0),("1.28.10","1","28","10","2024-05-22","2024-10","Maintenance",0,0)],
+    "Docker":       [("26.1.3","26","1","3","2024-05-14","—","GA",1,0),("25.0.5","25","0","5","2024-04-09","—","Maintenance",0,0)],
+    "Apache Kafka": [("3.7.0","3","7","0","2024-03-04","—","GA",1,0),("3.6.2","3","6","2","2024-02-07","—","Maintenance",0,0)],
+    "Nginx":        [("1.26.1","1","26","1","2024-05-29","—","Stable",1,0),("1.25.5","1","25","5","2024-04-23","—","Mainline",0,0)],
+    "Node.js":      [("22.2.0","22","2","0","2024-05-15","2027-04","GA",1,0),("20.14.0","20","14","0","2024-06-01","2026-04","LTS",0,1),("18.20.3","18","20","3","2024-04-10","2025-04","Maintenance",0,0)],
+    "Ubuntu Server":[("24.04 LTS","24","04","0","2024-04-25","2029-04","LTS",1,1),("22.04 LTS","22","04","0","2022-04-21","2027-04","LTS",0,1),("20.04 LTS","20","04","0","2020-04-23","2025-04","Maintenance",0,0)],
+    "Apache Kafka": [("3.7.0","3","7","0","2024-03-04","—","GA",1,0)],
+    "Keycloak":     [("24.0.5","24","0","5","2024-05-29","—","GA",1,0),("23.0.7","23","0","7","2024-03-01","—","Maintenance",0,0)],
+    "Terraform":    [("1.8.4","1","8","4","2024-05-30","—","GA",1,0),("1.7.5","1","7","5","2024-03-27","—","Maintenance",0,0)],
+    "Helm":         [("3.15.1","3","15","1","2024-05-23","—","GA",1,0)],
+    "Kong Gateway": [("3.7.1","3","7","1","2024-05-08","—","GA",1,0),("3.6.1","3","6","1","2024-03-01","—","Maintenance",0,0)],
+    "Power BI":     [("May 2024","2024","5","0","2024-05-14","—","GA",1,0)],
+    "Apache Log4j": [("2.23.1","2","23","1","2024-02-19","—","GA",1,0),("2.17.2","2","17","2","2022-02-22","—","Security-patch",0,0)],
+    "SQLite":       [("3.46.0","3","46","0","2024-05-23","—","GA",1,0)],
+    "Pandas":       [("2.2.2","2","2","2","2024-04-10","—","GA",1,0)],
+    "Elasticsearch":[("8.13.4","8","13","4","2024-05-16","—","GA",1,0),("7.17.21","7","17","21","2024-04-09","—","Maintenance",0,0)],
+    "Grafana":      [("10.4.3","10","4","3","2024-05-16","—","GA",1,0),("9.5.17","9","5","17","2024-04-09","—","Maintenance",0,0)],
+    "Prometheus":   [("2.52.0","2","52","0","2024-05-15","—","GA",1,0)],
+    "ArgoCD":       [("2.11.2","2","11","2","2024-05-29","—","GA",1,0),("2.10.11","2","10","11","2024-05-22","—","Maintenance",0,0)],
+}
+
+# CVE data (tech_name -> list of CVE tuples)
+CVES = {
+    "Apache Log4j": [
+        ("CVE-2021-44228","Critical",10.0,"Log4Shell: JNDI injection RCE","< 2.15.0","2.15.0","2021-12-10","Patched"),
+        ("CVE-2021-45046","Critical",9.0,"Log4Shell bypass via JNDI lookup","< 2.16.0","2.16.0","2021-12-14","Patched"),
+        ("CVE-2021-45105","High",    7.5,"Infinite recursion DoS","< 2.17.0","2.17.0","2021-12-18","Patched"),
+        ("CVE-2022-23302", "High",   8.8,"JMSSink deserialization RCE","< 2.17.1","2.17.1","2022-01-18","Patched"),
     ],
-    "Java":             [
-        ("21.0.3", 21,0,3,"LTS", ago(200), future(365*3), "Active",    1, 1),
-        ("17.0.11",17,0,11,"LTS",ago(400), future(365*2), "Active",    0, 1),
-        ("11.0.23",11,0,23,"LTS",ago(900), future(180),   "Maintenance-only",0,1),
-        ("8u412",  8,0,412,"LTS",ago(2000),future(90),    "Maintenance-only",0,1),
+    "Spring Boot": [
+        ("CVE-2022-22965","Critical",9.8,"Spring4Shell: RCE via DataBinder","< 5.3.18","5.3.18","2022-03-31","Patched"),
+        ("CVE-2023-20873","High",    7.5,"Actuator endpoint bypass","< 3.0.6","3.0.6","2023-04-20","Patched"),
     ],
-    "PostgreSQL":       [
-        ("16.3",   16,3,0,"GA",  ago(30),  future(365*3), "Active",    1, 0),
-        ("15.7",   15,7,0,"GA",  ago(200), future(365*2), "Active",    0, 0),
-        ("14.12",  14,12,0,"GA", ago(500), future(365),   "Active",    0, 0),
-        ("13.15",  13,15,0,"GA", ago(800), ago(60),       "EOL",       0, 0),
+    "Apache Kafka": [
+        ("CVE-2023-25194","High",    8.8,"JNDI injection via SASL config","< 3.4.0","3.4.0","2023-02-07","Patched"),
     ],
-    "Redis":            [
-        ("7.2.5",  7, 2,5,"GA",  ago(90),  future(365*2), "Active",    1, 0),
-        ("7.0.15", 7, 0,15,"GA", ago(300), future(365),   "Active",    0, 0),
-        ("6.2.14", 6, 2,14,"LTS",ago(700), ago(120),      "EOL",       0, 1),
+    "Nginx": [
+        ("CVE-2024-24989","Medium",  5.9,"HTTP/3 QUIC null pointer deref","< 1.25.4","1.25.4","2024-02-14","Patched"),
+        ("CVE-2021-23017","High",    7.7,"Off-by-one heap write in resolver","< 1.20.1","1.20.1","2021-05-25","Patched"),
     ],
-    "MongoDB":          [
-        ("7.0.9",  7, 0,9,"GA",  ago(60),  future(365*2), "Active",    1, 0),
-        ("6.0.15", 6, 0,15,"LTS",ago(400), future(365),   "Active",    0, 1),
-        ("5.0.26", 5, 0,26,"LTS",ago(800), ago(90),       "EOL",       0, 1),
+    "OpenSSL": [
+        ("CVE-2022-0778","High",7.5,"Infinite loop in BN_mod_sqrt","< 1.1.1n","1.1.1n","2022-03-15","Patched"),
     ],
-    "React":            [
-        ("18.3.1", 18,3,1,"GA",  ago(60),  None,          "Active",    1, 0),
-        ("18.2.0", 18,2,0,"GA",  ago(300), None,          "Maintenance-only",0,0),
-        ("17.0.2", 17,0,2,"GA",  ago(900), ago(180),      "EOL",       0, 0),
+    "PostgreSQL": [
+        ("CVE-2024-0985","High",8.0,"Non-owner SECURITY INVOKER view abuse","< 16.2","16.2","2024-02-08","Patched"),
+        ("CVE-2023-5869","High",8.8,"Integer overflow in array modification","< 15.5","15.5","2023-11-09","Patched"),
     ],
-    "Kubernetes":       [
-        ("1.30.1", 1,30,1,"GA",  ago(30),  future(365),   "Active",    1, 0),
-        ("1.29.5", 1,29,5,"GA",  ago(150), future(270),   "Active",    0, 0),
-        ("1.28.10",1,28,10,"GA", ago(300), future(90),    "Maintenance-only",0,0),
-        ("1.27.14",1,27,14,"GA", ago(500), ago(30),       "EOL",       0, 0),
+    "MongoDB": [
+        ("CVE-2024-1351","Medium",6.5,"Incorrect authorization check","< 7.0.6","7.0.6","2024-03-07","Patched"),
     ],
-    "Apache Kafka":     [
-        ("3.7.0",  3, 7,0,"GA",  ago(90),  future(365),   "Active",    1, 0),
-        ("3.6.2",  3, 6,2,"GA",  ago(270), future(180),   "Active",    0, 0),
-        ("3.4.1",  3, 4,1,"GA",  ago(600), ago(60),       "EOL",       0, 0),
+    "Redis": [
+        ("CVE-2023-41056","High",8.1,"Heap buffer overflow in SINTERCARD","< 7.2.4","7.2.4","2024-01-09","Patched"),
+        ("CVE-2023-28856","Medium",6.5,"HRANDFIELD crashes on invalid count","< 7.0.11","7.0.11","2023-04-17","Patched"),
     ],
-    "Spring Boot":      [
-        ("3.3.0",  3, 3,0,"GA",  ago(60),  future(365),   "Active",    1, 0),
-        ("3.2.5",  3, 2,5,"GA",  ago(180), future(270),   "Active",    0, 0),
-        ("2.7.18", 2, 7,18,"GA", ago(700), ago(180),      "EOL",       0, 0),
+    "PHP": [
+        ("CVE-2024-4577","Critical",9.8,"Argument injection in CGI mode (Windows)","< 8.3.8","8.3.8","2024-06-09","Patched"),
+        ("CVE-2023-3824","Critical",9.8,"Buffer underread in phar parsing","< 8.0.30","8.0.30","2023-08-11","Patched"),
     ],
-    "Elasticsearch":    [
-        ("8.13.4", 8,13,4,"GA",  ago(30),  future(365),   "Active",    1, 0),
-        ("8.12.2", 8,12,2,"GA",  ago(120), future(270),   "Active",    0, 0),
-        ("7.17.21",7,17,21,"GA", ago(600), ago(90),       "EOL",       0, 0),
+    "Kubernetes": [
+        ("CVE-2023-5528","High",    8.8,"Node privilege escalation via hostPath","< 1.28.4","1.28.4","2023-11-14","Patched"),
+        ("CVE-2023-2727","High",    6.5,"Bypass of imagePolicyWebhook","< 1.27.3","1.27.3","2023-06-15","Patched"),
     ],
-    "Node.js":          [
-        ("20.14.0",20,14,0,"LTS",ago(90),  future(365*2), "Active",    1, 1),
-        ("18.20.3",18,20,3,"LTS",ago(400), future(180),   "Active",    0, 1),
-        ("16.20.2",16,20,2,"LTS",ago(700), ago(120),      "EOL",       0, 1),
+    "Docker": [
+        ("CVE-2024-21626","High",8.6,"Container breakout via runc WORKDIR","< 26.0.0","26.0.0","2024-01-31","Patched"),
     ],
-    "Nginx":            [
-        ("1.26.1", 1,26,1,"Stable",ago(60), future(365),  "Active",    1, 0),
-        ("1.24.0", 1,24,0,"Stable",ago(400),future(180),  "Active",    0, 0),
-        ("1.22.1", 1,22,1,"Stable",ago(700),ago(90),      "EOL",       0, 0),
+    "Elasticsearch": [
+        ("CVE-2023-31419","High",7.5,"StackOverflow via _search request","< 8.9.1","8.9.1","2023-10-26","Patched"),
     ],
-    "Ubuntu Server":    [
-        ("24.04 LTS",24,4,0,"LTS",ago(90), future(365*5), "Active",    1, 1),
-        ("22.04 LTS",22,4,0,"LTS",ago(700),future(365*3), "Active",    0, 1),
-        ("20.04 LTS",20,4,0,"LTS",ago(1500),future(365),  "Maintenance-only",0,1),
-    ],
-    "Docker":           [
-        ("26.1.3", 26,1,3,"GA",  ago(30),  future(365),   "Active",    1, 0),
-        ("25.0.5", 25,0,5,"GA",  ago(200), future(180),   "Active",    0, 0),
-        ("24.0.9", 24,0,9,"GA",  ago(400), ago(60),       "EOL",       0, 0),
-    ],
-    "Terraform":        [
-        ("1.8.4",  1, 8,4,"GA",  ago(30),  future(365),   "Active",    1, 0),
-        ("1.7.5",  1, 7,5,"GA",  ago(150), future(180),   "Active",    0, 0),
-        ("1.5.7",  1, 5,7,"GA",  ago(400), ago(60),       "EOL",       0, 0),
+    "Node.js": [
+        ("CVE-2024-21892","High",7.8,"Code injection in Linux via PATH manipulation","< 20.11.1","20.11.1","2024-02-14","Patched"),
     ],
 }
 
-# ── Server inventory (15 servers) ─────────────────────────────────────────────
-SERVERS = [
-    ("prd-app-01",  "10.0.1.11", "Production", "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",16,64,"infra-team","Active"),
-    ("prd-app-02",  "10.0.1.12", "Production", "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",16,64,"infra-team","Active"),
-    ("prd-db-01",   "10.0.1.21", "Production", "Physical", "DC-Bangkok",  "Red Hat Enterprise Linux","9.2",32,256,"dba-team","Active"),
-    ("prd-db-02",   "10.0.1.22", "Production", "Physical", "DC-Bangkok",  "Red Hat Enterprise Linux","9.2",32,256,"dba-team","Active"),
-    ("prd-k8s-m01", "10.0.1.30", "Production", "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",8, 32,"platform-team","Active"),
-    ("prd-k8s-w01", "10.0.1.31", "Production", "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",16,64,"platform-team","Active"),
-    ("prd-k8s-w02", "10.0.1.32", "Production", "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",16,64,"platform-team","Active"),
-    ("uat-app-01",  "10.0.2.11", "UAT",        "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",8, 32,"infra-team","Active"),
-    ("uat-db-01",   "10.0.2.21", "UAT",        "VM",       "DC-Bangkok",  "Ubuntu Server","22.04 LTS",8, 32,"dba-team","Active"),
-    ("dev-app-01",  "10.0.3.11", "Dev",        "VM",       "DC-Bangkok",  "Ubuntu Server","24.04 LTS",4, 16,"dev-team","Active"),
-    ("cloud-eks-01","N/A",       "Production", "Cloud",    "AWS-ap-southeast-1","Ubuntu Server","22.04 LTS",8,32,"cloud-team","Active"),
-    ("cloud-eks-02","N/A",       "Production", "Cloud",    "AWS-ap-southeast-1","Ubuntu Server","22.04 LTS",8,32,"cloud-team","Active"),
-    ("cloud-rds-01","N/A",       "Production", "Cloud",    "AWS-ap-southeast-1","Amazon Linux","2023",4,32,"cloud-team","Active"),
-    ("legacy-app-01","10.0.1.99","Production", "Physical", "DC-Bangkok",  "Windows Server","2019",8, 32,"infra-team","Active"),
-    ("dr-app-01",   "10.10.1.11","DR",         "VM",       "DC-Chonburi", "Ubuntu Server","22.04 LTS",8,32,"infra-team","Active"),
+RADAR_HISTORY = [
+    # (name, quarter, ring, quadrant)
+    ("Python",       "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("Java",         "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("TypeScript",   "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("Go",           "2026-Q1","Trial",  "Languages & Frameworks"),
+    ("Rust",         "2026-Q1","Assess", "Languages & Frameworks"),
+    ("PHP",          "2026-Q1","Hold",   "Languages & Frameworks"),
+    ("Ruby",         "2026-Q1","Hold",   "Languages & Frameworks"),
+    ("FastAPI",      "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("React",        "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("Spring Boot",  "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("Next.js",      "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("Vue.js",       "2026-Q1","Trial",  "Languages & Frameworks"),
+    ("Django",       "2026-Q1","Adopt",  "Languages & Frameworks"),
+    ("NestJS",       "2026-Q1","Trial",  "Languages & Frameworks"),
+    ("Laravel",      "2026-Q1","Hold",   "Languages & Frameworks"),
+    ("Kubernetes",   "2026-Q1","Adopt",  "Platforms"),
+    ("Docker",       "2026-Q1","Adopt",  "Platforms"),
+    ("Apache Kafka", "2026-Q1","Adopt",  "Platforms"),
+    ("RabbitMQ",     "2026-Q1","Hold",   "Platforms"),
+    ("AWS",          "2026-Q1","Adopt",  "Platforms"),
+    ("Azure",        "2026-Q1","Adopt",  "Platforms"),
+    ("Kong Gateway", "2026-Q1","Adopt",  "Platforms"),
+    ("Node.js",      "2026-Q1","Adopt",  "Platforms"),
+    ("Istio",        "2026-Q1","Trial",  "Platforms"),
+    ("Apache Spark", "2026-Q1","Trial",  "Platforms"),
+    ("GitLab",       "2026-Q1","Adopt",  "Tools"),
+    ("GitHub Actions","2026-Q1","Adopt", "Tools"),
+    ("ArgoCD",       "2026-Q1","Adopt",  "Tools"),
+    ("Terraform",    "2026-Q1","Adopt",  "Tools"),
+    ("SonarQube",    "2026-Q1","Adopt",  "Tools"),
+    ("Prometheus",   "2026-Q1","Adopt",  "Tools"),
+    ("Grafana",      "2026-Q1","Adopt",  "Tools"),
+    ("Jenkins",      "2026-Q1","Hold",   "Tools"),
+    ("Helm",         "2026-Q1","Adopt",  "Tools"),
+    ("Vault",        "2026-Q1","Adopt",  "Tools"),
+    ("Apache Airflow","2026-Q1","Trial", "Tools"),
+    ("Power BI",     "2026-Q1","Adopt",  "Tools"),
+    ("Tableau",      "2026-Q1","Trial",  "Tools"),
+    ("LangChain",    "2026-Q1","Assess", "Tools"),
+    ("PostgreSQL",   "2026-Q1","Adopt",  "Infrastructure"),
+    ("MySQL",        "2026-Q1","Adopt",  "Infrastructure"),
+    ("Redis",        "2026-Q1","Adopt",  "Infrastructure"),
+    ("MongoDB",      "2026-Q1","Trial",  "Infrastructure"),
+    ("Elasticsearch","2026-Q1","Adopt",  "Infrastructure"),
+    ("Oracle Database","2026-Q1","Hold", "Infrastructure"),
+    ("Ubuntu Server","2026-Q1","Adopt",  "Infrastructure"),
+    ("Cloudflare",   "2026-Q1","Adopt",  "Infrastructure"),
+    ("Apache ActiveMQ","2026-Q1","Hold", "Infrastructure"),
+    ("Apache Log4j", "2026-Q1","Hold",   "Languages & Frameworks"),
+    ("OpenAI API",   "2026-Q1","Assess", "Platforms"),
+    # Previous quarter (movement tracking)
+    ("Go",           "2025-Q3","Trial",  "Languages & Frameworks"),
+    ("NestJS",       "2025-Q3","Assess", "Languages & Frameworks"),
+    ("Istio",        "2025-Q3","Assess", "Platforms"),
+    ("Apache Spark", "2025-Q3","Assess", "Platforms"),
+    ("LangChain",    "2025-Q3","Assess", "Tools"),
+    ("RabbitMQ",     "2025-Q3","Trial",  "Platforms"),
+    ("Jenkins",      "2025-Q3","Hold",   "Tools"),
 ]
 
-# ── Tech Radar positions ──────────────────────────────────────────────────────
-RADAR = {
-    "Languages & Frameworks": {
-        "Adopt":  ["Python","Java","TypeScript","Spring Boot","FastAPI","React","Node.js"],
-        "Trial":  ["Go","Kotlin","Next.js","Quarkus","Flutter"],
-        "Assess": ["Rust","Swift","Vue.js"],
-        "Hold":   ["Scala","Django","Angular"],
-    },
-    "Platforms":  {
-        "Adopt":  ["Kubernetes","Docker","Apache Kafka","Istio","Nginx","Kong Gateway"],
-        "Trial":  ["Apache Flink","GCP GKE","Azure AKS"],
-        "Assess": ["NATS","Falco","WSO2 API Manager"],
-        "Hold":   ["Oracle WebLogic","IBM MQ"],
-    },
-    "Tools": {
-        "Adopt":  ["Terraform","ArgoCD","GitHub Actions","SonarQube","Prometheus","Grafana","Apache Airflow","Power BI"],
-        "Trial":  ["dbt","Helm","OpenTelemetry","LangChain","Ray"],
-        "Assess": ["Hugging Face","SonarCloud","Falco"],
-        "Hold":   ["Jenkins","Crystal Reports","Subversion (SVN)"],
-    },
-    "Infrastructure": {
-        "Adopt":  ["AWS EC2","AWS S3","AWS RDS","Redis","PostgreSQL","Elasticsearch","Ubuntu Server","JVM (OpenJDK)"],
-        "Trial":  ["GCP BigQuery","MinIO","Longhorn","ClickHouse"],
-        "Assess": ["Ceph","Alpine Linux"],
-        "Hold":   ["Oracle Database","Microsoft SQL Server","Windows Server","MariaDB"],
-    },
-}
-
-# ── App → tech usage mapping ──────────────────────────────────────────────────
-# (app_id, tech_name, installed_version, environment, usage_type)
-APP_TECH_USAGE = [
-    ("APP-001","Java","17.0.11","Production","Runtime"),
-    ("APP-001","Spring Boot","3.2.5","Production","Runtime"),
-    ("APP-001","Oracle Database","19c","Production","Runtime"),
-    ("APP-001","Apache Kafka","3.6.2","Production","Runtime"),
-    ("APP-002","Python","3.11.9","Production","Runtime"),
-    ("APP-002","PostgreSQL","15.7","Production","Runtime"),
-    ("APP-002","Redis","7.0.15","Production","Runtime"),
-    ("APP-003","Java","8u412","Production","Runtime"),
-    ("APP-003","Oracle Database","12c","Production","Runtime"),
-    ("APP-004","Node.js","18.20.3","Production","Runtime"),
-    ("APP-004","React","18.2.0","Production","Runtime"),
-    ("APP-004","PostgreSQL","15.7","Production","Runtime"),
-    ("APP-005","Python","3.12.3","Production","Runtime"),
-    ("APP-005","TensorFlow","2.16.1","Production","Runtime"),
-    ("APP-005","Apache Kafka","3.7.0","Production","Runtime"),
-    ("APP-005","MongoDB","7.0.9","Production","Runtime"),
-    ("APP-006","Java","8u412","Production","Runtime"),
-    ("APP-006","Oracle Database","11g","Production","Runtime"),
-    ("APP-007","Kubernetes","1.29.5","Production","Infrastructure"),
-    ("APP-007","Docker","26.1.3","Production","Infrastructure"),
-    ("APP-007","Helm","3.15.1","Production","Tool"),
-    ("APP-007","ArgoCD","2.11.0","Production","Tool"),
-    ("APP-008","Apache Spark","3.5.1","Production","Runtime"),
-    ("APP-008","Python","3.11.9","Production","Runtime"),
-    ("APP-008","ClickHouse","24.4.1","Production","Runtime"),
-    ("APP-009","Java","17.0.11","Production","Runtime"),
-    ("APP-009","Spring Boot","3.2.5","Production","Runtime"),
-    ("APP-010","TypeScript","5.4.5","Production","Runtime"),
-    ("APP-010","Next.js","14.2.3","Production","Runtime"),
-    ("APP-010","PostgreSQL","16.3","Production","Runtime"),
-    ("APP-010","Redis","7.2.5","Production","Runtime"),
-    ("APP-011","Java","8u412","Production","Runtime"),
-    ("APP-011","Oracle Database","12c","Production","Runtime"),
-    ("APP-012","TypeScript","5.4.5","Production","Tool"),
-    ("APP-012","Node.js","20.14.0","Production","Runtime"),
-    ("APP-013","Power BI","Nov-2023","Production","Runtime"),
-    ("APP-014","Java","11.0.23","Production","Runtime"),
-    ("APP-015","Java","17.0.11","Production","Runtime"),
-    ("APP-015","Spring Boot","3.2.5","Production","Runtime"),
-    ("APP-016","Java","17.0.11","Production","Runtime"),
-    ("APP-016","Keycloak","24.0.4","Production","Runtime"),
-    ("APP-016","PostgreSQL","15.7","Production","Runtime"),
-    ("APP-017","Node.js","18.20.3","Production","Runtime"),
-    ("APP-018","Python","3.11.9","Production","Runtime"),
-    ("APP-018","Apache Airflow","2.9.1","Production","Runtime"),
-    ("APP-018","PostgreSQL","15.7","Production","Runtime"),
-    ("APP-019","Java","17.0.11","Production","Runtime"),
-    ("APP-020","Nginx","1.26.1","Production","Infrastructure"),
-    ("APP-020","Kong Gateway","3.7.0","Production","Runtime"),
-    ("APP-021","Java","8u412","Production","Runtime"),
-    ("APP-022","TypeScript","5.4.5","Production","Runtime"),
-    ("APP-022","React","18.3.1","Production","Runtime"),
-    ("APP-022","Node.js","20.14.0","Production","Runtime"),
-    ("APP-022","MongoDB","6.0.15","Production","Runtime"),
-    ("APP-023","Python","3.12.3","Production","Runtime"),
-    ("APP-024","Python","3.12.3","Production","Runtime"),
-    ("APP-024","MLflow","2.12.1","Production","Runtime"),
-    ("APP-025","Java","11.0.23","Production","Runtime"),
-    ("APP-026","Java","17.0.11","Production","Runtime"),
-    ("APP-027","Python","3.11.9","Production","Runtime"),
-    ("APP-028","Crystal Reports","14.3","Production","Runtime"),
-    ("APP-029","Go","1.22.3","Production","Runtime"),
-    ("APP-029","Istio","1.21.2","Production","Infrastructure"),
-    ("APP-030","Java","17.0.11","Production","Runtime"),
-]
-
-# ── Seed functions ────────────────────────────────────────────────────────────
-def next_id(prefix, conn, table, id_col="id"):
-    rows = conn.execute(f"SELECT {id_col} FROM {table} WHERE {id_col} LIKE '{prefix}-%' ORDER BY {id_col} DESC LIMIT 1").fetchone()
-    if rows:
-        last = int(rows[0].split("-")[1])
-        return f"{prefix}-{str(last+1).zfill(4)}"
-    return f"{prefix}-0001"
-
-def seed_catalog(conn):
-    print("→ Seeding tech_catalog ...")
-    inserted = 0
-    for i, (name, vendor, cat, sub, tier, status, tags, desc) in enumerate(TECH_CATALOG, 1):
-        tid = f"TC-{str(i).zfill(4)}"
-        exists = conn.execute("SELECT 1 FROM tech_catalog WHERE id=?", (tid,)).fetchone()
-        if not exists:
-            conn.execute("""INSERT INTO tech_catalog(id,name,vendor,category,sub_category,tier,standard_status,tags,description,created_by,created_at,updated_at)
-                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (tid, name, vendor, cat, sub, tier, status,
-                 json.dumps(tags), desc, "seed_script",
-                 ago(random.randint(90,730)), ago(random.randint(1,30))))
-            inserted += 1
-    print(f"   tech_catalog: {inserted} rows inserted")
-
-def seed_versions(conn):
-    print("→ Seeding tech_versions ...")
-    inserted = 0
-    for tech_name, versions in TECH_VERSIONS.items():
-        row = conn.execute("SELECT id FROM tech_catalog WHERE name=?", (tech_name,)).fetchone()
-        if not row:
-            print(f"   WARNING: tech '{tech_name}' not found in catalog")
-            continue
-        tech_id = row[0]
-        for j, (label, major, minor, patch, rtype, rdate, eol, lifecycle, is_latest, is_lts) in enumerate(versions):
-            vid = f"TV-{tech_id.split('-')[1]}-{str(j+1).zfill(2)}"
-            exists = conn.execute("SELECT 1 FROM tech_versions WHERE id=?", (vid,)).fetchone()
-            if not exists:
-                conn.execute("""INSERT INTO tech_versions(id,tech_id,version_label,major,minor,patch,release_type,release_date,eol_date,lifecycle_phase,is_latest,is_lts,created_at)
-                                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (vid, tech_id, label, major, minor, patch, rtype, rdate, eol, lifecycle, is_latest, is_lts, ago(random.randint(1,30))))
-                inserted += 1
-    print(f"   tech_versions: {inserted} rows inserted")
-
-def seed_servers(conn):
-    print("→ Seeding tech_servers ...")
-    inserted = 0
-    for i, (host, ip, env, stype, loc, osname, osver, cpu, ram, managed, status) in enumerate(SERVERS, 1):
-        sid = f"SRV-{str(i).zfill(4)}"
-        exists = conn.execute("SELECT 1 FROM tech_servers WHERE id=?", (sid,)).fetchone()
-        if not exists:
-            conn.execute("""INSERT INTO tech_servers(id,hostname,ip_address,environment,server_type,location,os_name,os_version,cpu_core,ram_gb,managed_by,status,created_by,created_at,updated_at)
-                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (sid, host, ip, env, stype, loc, osname, osver, cpu, ram, managed, status,
-                 "seed_script", ago(random.randint(90,730)), ago(random.randint(1,30))))
-            inserted += 1
-    print(f"   tech_servers: {inserted} rows inserted")
-
-def seed_usage(conn):
-    print("→ Seeding tech_usage (app + server) ...")
-    inserted = 0
-    # App-based usage
-    for i, (app_id, tech_name, inst_ver, env, utype) in enumerate(APP_TECH_USAGE, 1):
-        row = conn.execute("SELECT id FROM tech_catalog WHERE name=?", (tech_name,)).fetchone()
-        if not row:
-            continue
-        tech_id = row[0]
-        uid = f"TU-{str(i).zfill(4)}"
-        exists = conn.execute("SELECT 1 FROM tech_usage WHERE id=?", (uid,)).fetchone()
-        if not exists:
-            # try to find matching version_id
-            ver_row = conn.execute("SELECT id FROM tech_versions WHERE tech_id=? AND version_label=? LIMIT 1", (tech_id, inst_ver)).fetchone()
-            ver_id = ver_row[0] if ver_row else None
-            conn.execute("""INSERT INTO tech_usage(id,tech_id,version_id,usage_target_type,app_id,environment,usage_type,installed_version,install_date,created_by,created_at,updated_at)
-                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (uid, tech_id, ver_id, "App", app_id, env, utype, inst_ver,
-                 ago(random.randint(30,500)), "seed_script",
-                 ago(random.randint(1,30)), ago(random.randint(1,10))))
-            inserted += 1
-
-    # Server-based OS/runtime usage
-    server_tech_pairs = [
-        ("SRV-0001","Ubuntu Server","22.04 LTS"),
-        ("SRV-0002","Ubuntu Server","22.04 LTS"),
-        ("SRV-0003","Red Hat Enterprise Linux","9.2"),
-        ("SRV-0004","Red Hat Enterprise Linux","9.2"),
-        ("SRV-0005","Ubuntu Server","22.04 LTS"),
-        ("SRV-0006","Ubuntu Server","22.04 LTS"),
-        ("SRV-0007","Ubuntu Server","22.04 LTS"),
-        ("SRV-0008","Ubuntu Server","22.04 LTS"),
-        ("SRV-0009","Ubuntu Server","22.04 LTS"),
-        ("SRV-0010","Ubuntu Server","24.04 LTS"),
-        ("SRV-0011","Ubuntu Server","22.04 LTS"),
-        ("SRV-0012","Ubuntu Server","22.04 LTS"),
-        ("SRV-0014","Windows Server","2019"),
-        ("SRV-0015","Ubuntu Server","22.04 LTS"),
-        ("SRV-0001","PostgreSQL","15.7"),
-        ("SRV-0003","Oracle Database","19c"),
-        ("SRV-0006","Kubernetes","1.29.5"),
-        ("SRV-0007","Kubernetes","1.29.5"),
-        ("SRV-0001","Node.js","18.20.3"),
-        ("SRV-0002","Java","17.0.11"),
-        ("SRV-0011","Apache Kafka","3.7.0"),
-        ("SRV-0001","Nginx","1.26.1"),
-        ("SRV-0002","Nginx","1.26.1"),
-    ]
-    base = len(APP_TECH_USAGE) + 1
-    for j, (srv_id, tech_name, inst_ver) in enumerate(server_tech_pairs, base):
-        row = conn.execute("SELECT id FROM tech_catalog WHERE name=?", (tech_name,)).fetchone()
-        if not row:
-            continue
-        tech_id = row[0]
-        uid = f"TU-{str(j).zfill(4)}"
-        exists = conn.execute("SELECT 1 FROM tech_usage WHERE id=?", (uid,)).fetchone()
-        if not exists:
-            srv_row = conn.execute("SELECT environment FROM tech_servers WHERE id=?", (srv_id,)).fetchone()
-            env = srv_row[0] if srv_row else "Production"
-            conn.execute("""INSERT INTO tech_usage(id,tech_id,version_id,usage_target_type,server_id,environment,usage_type,installed_version,install_date,created_by,created_at,updated_at)
-                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (uid, tech_id, None, "Server", srv_id, env, "Runtime", inst_ver,
-                 ago(random.randint(30,500)), "seed_script",
-                 ago(random.randint(1,30)), ago(random.randint(1,10))))
-            inserted += 1
-
-    print(f"   tech_usage: {inserted} rows inserted")
-
-def seed_radar(conn):
-    print("→ Seeding tech_radar ...")
-    inserted = 0
-    quarters = ["2025-Q3","2025-Q4","2026-Q1"]
-    ring_movement = {
-        "Python":    [("Adopt",""),("Adopt","Adopt"),("Adopt","Adopt")],
-        "Jenkins":   [("Trial",""),("Hold","Trial"),("Hold","Hold")],
-        "Crystal Reports":[("Hold",""),("Deprecated","Hold"),("Deprecated","Deprecated")],
-        "LangChain": [("Assess",""),("Trial","Assess"),("Trial","Trial")],
-    }
-    rid = 1
-    for quadrant, rings in RADAR.items():
-        for ring, techs in rings.items():
-            for tech_name in techs:
-                row = conn.execute("SELECT id FROM tech_catalog WHERE name=?", (tech_name,)).fetchone()
-                if not row:
-                    continue
-                tech_id = row[0]
-                prev = None
-                for q in quarters:
-                    # check override
-                    if tech_name in ring_movement:
-                        idx = quarters.index(q)
-                        actual_ring, actual_prev = ring_movement[tech_name][idx]
-                    else:
-                        actual_ring = ring
-                        actual_prev = prev if prev and prev != ring else None
-                    radar_id = f"TR-{str(rid).zfill(4)}"
-                    exists = conn.execute("SELECT 1 FROM tech_radar WHERE id=?", (radar_id,)).fetchone()
-                    if not exists:
-                        conn.execute("""INSERT INTO tech_radar(id,tech_id,radar_date,ring,quadrant,rationale,decided_by,prev_ring,created_at)
-                                        VALUES(?,?,?,?,?,?,?,?,?)""",
-                            (radar_id, tech_id, q, actual_ring, quadrant,
-                             f"{tech_name} positioned as {actual_ring} in {quadrant}",
-                             "ARB", actual_prev, ago(random.randint(1,30))))
-                        inserted += 1
-                    prev = actual_ring
-                    rid += 1
-
-    print(f"   tech_radar: {inserted} rows inserted")
-
-# ── Main ───────────────────────────────────────────────────────────────────────
-def main():
-    print(f"\n{'='*60}")
-    print(f"  Tech Stack Seed — ea_domains.db")
-    print(f"{'='*60}")
-
-    conn = sqlite3.connect(DB_PATH)
+def seed():
+    conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = OFF")
+    now = datetime.utcnow().isoformat()
 
-    seed_catalog(conn)
-    seed_versions(conn)
-    seed_servers(conn)
-    seed_usage(conn)
-    seed_radar(conn)
+    # Build name->id map
+    tech_id_map = {}
+
+    # Insert tech_catalog
+    print("Inserting tech_catalog...")
+    for row in TECH_DATA:
+        name, vendor, cat, subcat, tier, status, website = row
+        existing = conn.execute("SELECT id FROM tech_catalog WHERE name=?", (name,)).fetchone()
+        if existing:
+            tech_id_map[name] = existing["id"]
+            continue
+        tid = uid("TC")
+        tech_id_map[name] = tid
+        conn.execute("""INSERT INTO tech_catalog
+            (id,name,vendor,category,sub_category,tier,standard_status,website_url,created_by,created_at,updated_at)
+            VALUES(?,?,?,?,?,?,?,?,'system',?,?)""",
+            (tid, name, vendor, cat, subcat, tier, status, website, now, now))
 
     conn.commit()
-    conn.close()
+    print(f"  → {len(tech_id_map)} tech entries")
+
+    # Insert tech_versions
+    print("Inserting tech_versions...")
+    ver_count = 0
+    ver_id_map = {}  # (tech_name, version_label) -> ver_id
+    for name, versions in VERSIONS.items():
+        tid = tech_id_map.get(name)
+        if not tid:
+            continue
+        for v in versions:
+            label, major, minor, patch, rdate, eol, rtype, is_latest, is_lts = v
+            existing = conn.execute("SELECT id FROM tech_versions WHERE tech_id=? AND version_label=?", (tid, label)).fetchone()
+            if existing:
+                ver_id_map[(name, label)] = existing["id"]
+                continue
+            vid = uid("TV")
+            ver_id_map[(name, label)] = vid
+            eol_date = None if eol == "—" else eol
+            lifecycle = "EOL" if eol_date and eol_date < "2025" else ("Maintenance-only" if rtype == "Maintenance" else "Active")
+            conn.execute("""INSERT INTO tech_versions
+                (id,tech_id,version_label,major,minor,patch,release_type,release_date,eol_date,lifecycle_phase,is_latest,is_lts,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (vid, tid, label, int(major) if major.isdigit() else 0,
+                 int(minor) if minor.isdigit() else 0,
+                 int(patch) if patch.isdigit() else 0,
+                 rtype, rdate, eol_date, lifecycle, is_latest, is_lts, now))
+            ver_count += 1
+
+    conn.commit()
+    print(f"  → {ver_count} versions")
+
+    # Insert tech_vulnerabilities
+    print("Inserting CVE records...")
+    cve_count = 0
+    for name, cves in CVES.items():
+        tid = tech_id_map.get(name)
+        if not tid:
+            continue
+        # find latest version id
+        latest_ver = conn.execute("SELECT id FROM tech_versions WHERE tech_id=? AND is_latest=1", (tid,)).fetchone()
+        vid = latest_ver["id"] if latest_ver else None
+        for cve in cves:
+            cve_id, severity, cvss, desc, affected, fixed_in, pub_date, status = cve
+            existing = conn.execute("SELECT id FROM tech_vulnerabilities WHERE cve_id=?", (cve_id,)).fetchone()
+            if existing:
+                continue
+            conn.execute("""INSERT INTO tech_vulnerabilities
+                (id,tech_id,version_id,cve_id,severity,cvss_score,description,affected_versions,
+                 fixed_in_version,published_date,status,fetched_at,created_at,updated_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (uid("CVE"), tid, vid, cve_id, severity, cvss, desc, affected,
+                 fixed_in, pub_date, status, now, now, now))
+            cve_count += 1
+
+    conn.commit()
+    print(f"  → {cve_count} CVE records")
+
+    # Insert tech_radar
+    print("Inserting radar entries...")
+    radar_count = 0
+    RATIONALE = {
+        "Adopt":  "เทคโนโลยีนี้ผ่านการพิสูจน์ในระบบ Production แล้ว แนะนำให้ใช้เป็น Standard",
+        "Trial":  "มีศักยภาพสูง กำลังทดสอบใน project จริง — ติดตามผลลัพธ์ก่อนยกระดับ",
+        "Assess": "น่าสนใจ ให้ทีมศึกษาและทำ PoC ก่อนตัดสินใจ",
+        "Hold":   "ไม่แนะนำให้นำมาใช้ใหม่ — ให้วางแผน migration ออก",
+    }
+    # Build previous quarter map
+    prev_ring_map = {}
+    for name, quarter, ring, quad in RADAR_HISTORY:
+        if quarter == "2025-Q3":
+            prev_ring_map[name] = ring
+
+    for name, quarter, ring, quad in RADAR_HISTORY:
+        tid = tech_id_map.get(name)
+        if not tid:
+            continue
+        existing = conn.execute("SELECT id FROM tech_radar WHERE tech_id=? AND radar_date=?", (tid, quarter)).fetchone()
+        if existing:
+            continue
+        prev = prev_ring_map.get(name) if quarter == "2026-Q1" else None
+        conn.execute("""INSERT INTO tech_radar(id,tech_id,radar_date,ring,quadrant,rationale,decided_by,prev_ring,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (uid("TR"), tid, quarter, ring, quad, RATIONALE.get(ring,""), "ARB", prev, now))
+        radar_count += 1
+
+    conn.commit()
+    print(f"  → {radar_count} radar entries")
 
     # Summary
-    conn2 = sqlite3.connect(DB_PATH)
-    c = conn2.cursor()
-    print(f"\n{'='*60}")
-    print("  Final counts:")
-    for tbl in ["tech_catalog","tech_versions","tech_servers","tech_usage","tech_vulnerabilities","tech_radar"]:
-        n = c.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
-        print(f"  {tbl:<30} {n:>4} rows")
-    conn2.close()
-    print(f"{'='*60}")
-    print("✅ Done!")
+    print("\n=== SEED COMPLETE ===")
+    for tbl in ["tech_catalog","tech_versions","tech_vulnerabilities","tech_radar"]:
+        count = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+        print(f"  {tbl}: {count} rows")
+
+    conn.close()
 
 if __name__ == "__main__":
-    main()
+    seed()

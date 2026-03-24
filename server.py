@@ -663,6 +663,103 @@ CREATE TABLE IF NOT EXISTS tech_radar (
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_tr_tech ON tech_radar(tech_id);
+
+-- ── EA Repository ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS repo_links (
+    id          TEXT PRIMARY KEY,
+    src_type    TEXT NOT NULL,
+    src_id      TEXT NOT NULL,
+    dst_type    TEXT NOT NULL,
+    dst_id      TEXT NOT NULL,
+    link_type   TEXT NOT NULL DEFAULT 'Supports',
+    strength    TEXT DEFAULT 'Primary',
+    note        TEXT,
+    created_by  TEXT,
+    created_at  TEXT DEFAULT (datetime('now')),
+    updated_at  TEXT DEFAULT (datetime('now')),
+    UNIQUE(src_type, src_id, dst_type, dst_id, link_type)
+);
+CREATE INDEX IF NOT EXISTS idx_rl_src ON repo_links(src_type, src_id);
+CREATE INDEX IF NOT EXISTS idx_rl_dst ON repo_links(dst_type, dst_id);
+
+CREATE TABLE IF NOT EXISTS repo_standards (
+    id             TEXT PRIMARY KEY,
+    code           TEXT UNIQUE,
+    category       TEXT,
+    title          TEXT NOT NULL,
+    description    TEXT,
+    rationale      TEXT,
+    guidance       TEXT,
+    status         TEXT DEFAULT 'Active',
+    version        TEXT DEFAULT '1.0',
+    owner          TEXT,
+    effective_date TEXT,
+    review_date    TEXT,
+    tags           TEXT DEFAULT '[]',
+    created_by     TEXT,
+    created_at     TEXT DEFAULT (datetime('now')),
+    updated_at     TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS repo_audit_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts          TEXT DEFAULT (datetime('now')),
+    user_id     TEXT NOT NULL,
+    action      TEXT NOT NULL,
+    object_type TEXT,
+    object_id   TEXT,
+    detail      TEXT
+);
+
+-- ── EA Document Library ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ea_documents (
+    id              TEXT PRIMARY KEY,
+    doc_code        TEXT UNIQUE NOT NULL,
+    doc_type        TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    version         TEXT DEFAULT '1.0',
+    status          TEXT DEFAULT 'Draft',
+    domain          TEXT DEFAULT '',
+    category        TEXT DEFAULT '',
+    scope           TEXT DEFAULT '',
+    summary         TEXT DEFAULT '',
+    content         TEXT DEFAULT '',
+    confidentiality TEXT DEFAULT 'Internal',
+    owner           TEXT DEFAULT '',
+    approved_by     TEXT DEFAULT '',
+    effective_date  TEXT DEFAULT '',
+    review_date     TEXT DEFAULT '',
+    expiry_date     TEXT DEFAULT '',
+    tags            TEXT DEFAULT '[]',
+    created_by      TEXT DEFAULT '',
+    created_at      TEXT DEFAULT (datetime('now')),
+    updated_at      TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_eadoc_type   ON ea_documents(doc_type);
+CREATE INDEX IF NOT EXISTS idx_eadoc_domain ON ea_documents(domain);
+CREATE INDEX IF NOT EXISTS idx_eadoc_status ON ea_documents(status);
+
+CREATE TABLE IF NOT EXISTS ea_doc_versions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id           TEXT NOT NULL REFERENCES ea_documents(id),
+    version          TEXT NOT NULL,
+    change_summary   TEXT DEFAULT '',
+    content_snapshot TEXT DEFAULT '',
+    status_snapshot  TEXT DEFAULT '',
+    changed_by       TEXT DEFAULT '',
+    changed_at       TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_eadocv_doc ON ea_doc_versions(doc_id);
+
+CREATE TABLE IF NOT EXISTS ea_doc_sections (
+    id          TEXT PRIMARY KEY,
+    doc_id      TEXT NOT NULL REFERENCES ea_documents(id),
+    section_no  TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    content     TEXT DEFAULT '',
+    order_idx   INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_eadocs_doc ON ea_doc_sections(doc_id);
 """
 
 # ── EBA Seed ──────────────────────────────────────────────────────────────────
@@ -1690,6 +1787,261 @@ def get_ea_domains_db():
     finally:
         conn.close()
 
+def _seed_tech_catalog(conn):
+    """Auto-seed 99 tech stack entries with versions, CVEs and radar on first run."""
+    now = datetime.utcnow().isoformat()
+    import uuid as _uuid
+    def uid(p): return p + "-" + _uuid.uuid4().hex[:6].upper()
+
+    TECH_DATA = [
+        ("Python","Python Software Foundation","Language","General Purpose","Tier 1","Approved","python.org"),
+        ("Java","Oracle","Language","General Purpose","Tier 1","Approved","java.com"),
+        ("TypeScript","Microsoft","Language","Web/JS","Tier 1","Approved","typescriptlang.org"),
+        ("JavaScript","ECMA International","Language","Web/JS","Tier 1","Approved","ecma-international.org"),
+        ("Go","Google","Language","Systems","Tier 2","Approved","go.dev"),
+        ("Kotlin","JetBrains","Language","JVM","Tier 2","Approved","kotlinlang.org"),
+        ("Rust","Rust Foundation","Language","Systems","Tier 3","Assess","rust-lang.org"),
+        ("C#","Microsoft","Language","General Purpose","Tier 2","Approved","dotnet.microsoft.com"),
+        ("PHP","The PHP Group","Language","Web","Tier 3","Hold","php.net"),
+        ("Ruby","Ruby Association","Language","General Purpose","Tier 3","Hold","ruby-lang.org"),
+        ("Swift","Apple","Language","Mobile/Systems","Tier 2","Approved","swift.org"),
+        ("Scala","EPFL","Language","JVM/Functional","Tier 3","Hold","scala-lang.org"),
+        ("FastAPI","Sebastián Ramírez","Framework","Web/API","Tier 1","Approved","fastapi.tiangolo.com"),
+        ("React","Meta","Framework","Frontend","Tier 1","Approved","react.dev"),
+        ("Spring Boot","VMware Tanzu","Framework","Web/API","Tier 1","Approved","spring.io"),
+        ("Next.js","Vercel","Framework","Full-Stack Web","Tier 1","Approved","nextjs.org"),
+        ("Vue.js","Evan You","Framework","Frontend","Tier 2","Approved","vuejs.org"),
+        ("Angular","Google","Framework","Frontend","Tier 2","Approved","angular.io"),
+        ("Django","Django Software Foundation","Framework","Web/API","Tier 2","Approved","djangoproject.com"),
+        ("Express.js","OpenJS Foundation","Framework","Web/API","Tier 2","Approved","expressjs.com"),
+        ("NestJS","Kamil Myśliwiec","Framework","Web/API","Tier 2","Trial","nestjs.com"),
+        ("Gin","gin-gonic","Framework","Web/API","Tier 2","Trial","gin-gonic.com"),
+        ("Laravel","Taylor Otwell","Framework","Web/API","Tier 3","Hold","laravel.com"),
+        ("ASP.NET Core","Microsoft","Framework","Web/API","Tier 2","Approved","dotnet.microsoft.com"),
+        ("PostgreSQL","PostgreSQL Global Dev Group","Database","RDBMS","Tier 1","Approved","postgresql.org"),
+        ("MySQL","Oracle","Database","RDBMS","Tier 1","Approved","mysql.com"),
+        ("MongoDB","MongoDB Inc.","Database","NoSQL/Document","Tier 2","Approved","mongodb.com"),
+        ("Redis","Redis Ltd.","Database","In-Memory/Cache","Tier 1","Approved","redis.io"),
+        ("Elasticsearch","Elastic","Database","Search/Analytics","Tier 2","Approved","elastic.co"),
+        ("SQLite","D. Richard Hipp","Database","Embedded RDBMS","Tier 2","Approved","sqlite.org"),
+        ("Microsoft SQL Server","Microsoft","Database","RDBMS","Tier 2","Approved","microsoft.com/sql-server"),
+        ("Oracle Database","Oracle","Database","RDBMS","Tier 2","Hold","oracle.com"),
+        ("Cassandra","Apache Foundation","Database","NoSQL/Wide-Column","Tier 3","Assess","cassandra.apache.org"),
+        ("ClickHouse","ClickHouse Inc.","Database","OLAP/Analytics","Tier 2","Trial","clickhouse.com"),
+        ("Kubernetes","CNCF","Platform","Container Orchestration","Tier 1","Approved","kubernetes.io"),
+        ("Docker","Docker Inc.","Platform","Containerization","Tier 1","Approved","docker.com"),
+        ("Apache Kafka","Apache Foundation","Platform","Messaging/Streaming","Tier 1","Approved","kafka.apache.org"),
+        ("RabbitMQ","VMware","Platform","Messaging","Tier 2","Hold","rabbitmq.com"),
+        ("AWS","Amazon","Platform","Cloud","Tier 1","Approved","aws.amazon.com"),
+        ("Azure","Microsoft","Platform","Cloud","Tier 1","Approved","azure.microsoft.com"),
+        ("GCP","Google","Platform","Cloud","Tier 2","Approved","cloud.google.com"),
+        ("Nginx","F5 Inc.","Platform","Web Server/Proxy","Tier 1","Approved","nginx.com"),
+        ("Node.js","OpenJS Foundation","Platform","Runtime","Tier 1","Approved","nodejs.org"),
+        ("Apache Tomcat","Apache Foundation","Platform","Java Runtime","Tier 2","Approved","tomcat.apache.org"),
+        ("Istio","CNCF","Platform","Service Mesh","Tier 2","Trial","istio.io"),
+        ("GitLab","GitLab Inc.","Tool","DevOps/SCM","Tier 1","Approved","gitlab.com"),
+        ("GitHub","Microsoft","Tool","SCM","Tier 1","Approved","github.com"),
+        ("Jenkins","Jenkins Community","Tool","CI/CD","Tier 2","Hold","jenkins.io"),
+        ("GitHub Actions","Microsoft","Tool","CI/CD","Tier 1","Approved","github.com/features/actions"),
+        ("ArgoCD","CNCF","Tool","GitOps/CD","Tier 1","Approved","argoproj.github.io"),
+        ("Terraform","HashiCorp","Tool","IaC","Tier 1","Approved","terraform.io"),
+        ("Ansible","Red Hat","Tool","Config Management","Tier 2","Approved","ansible.com"),
+        ("SonarQube","SonarSource","Tool","Code Quality","Tier 1","Approved","sonarsource.com"),
+        ("Prometheus","CNCF","Tool","Monitoring","Tier 1","Approved","prometheus.io"),
+        ("Grafana","Grafana Labs","Tool","Observability","Tier 1","Approved","grafana.com"),
+        ("Jaeger","CNCF","Tool","Distributed Tracing","Tier 2","Trial","jaegertracing.io"),
+        ("Kibana","Elastic","Tool","Log Visualization","Tier 2","Approved","elastic.co"),
+        ("Vault","HashiCorp","Tool","Secrets Management","Tier 1","Approved","vaultproject.io"),
+        ("Helm","CNCF","Tool","K8s Package Mgr","Tier 1","Approved","helm.sh"),
+        ("Apache Airflow","Apache Foundation","Tool","Workflow/Pipeline","Tier 2","Approved","airflow.apache.org"),
+        ("dbt","dbt Labs","Tool","Data Transform","Tier 2","Trial","getdbt.com"),
+        ("Postman","Postman Inc.","Tool","API Testing","Tier 2","Approved","postman.com"),
+        ("JIRA","Atlassian","Tool","Project Mgmt","Tier 2","Approved","atlassian.com"),
+        ("Ubuntu Server","Canonical","Infrastructure","Linux OS","Tier 1","Approved","ubuntu.com"),
+        ("Red Hat Enterprise Linux","Red Hat","Infrastructure","Linux OS","Tier 1","Approved","redhat.com"),
+        ("Windows Server","Microsoft","Infrastructure","OS","Tier 2","Approved","microsoft.com"),
+        ("VMware vSphere","Broadcom","Infrastructure","Virtualization","Tier 2","Hold","vmware.com"),
+        ("Proxmox VE","Proxmox Server Solutions","Infrastructure","Virtualization","Tier 2","Trial","proxmox.com"),
+        ("HAProxy","HAProxy Technologies","Infrastructure","Load Balancer","Tier 2","Approved","haproxy.com"),
+        ("AWS S3","Amazon","Infrastructure","Object Storage","Tier 1","Approved","aws.amazon.com/s3"),
+        ("AWS RDS","Amazon","Infrastructure","Managed DB","Tier 1","Approved","aws.amazon.com/rds"),
+        ("AWS EKS","Amazon","Infrastructure","Managed K8s","Tier 1","Approved","aws.amazon.com/eks"),
+        ("Azure AKS","Microsoft","Infrastructure","Managed K8s","Tier 2","Approved","azure.microsoft.com"),
+        ("Cloudflare","Cloudflare Inc.","Infrastructure","CDN/Security","Tier 1","Approved","cloudflare.com"),
+        ("Keycloak","Red Hat","Security","IAM/SSO","Tier 1","Approved","keycloak.org"),
+        ("OWASP ZAP","OWASP","Security","DAST/Scanning","Tier 2","Approved","owasp.org"),
+        ("Trivy","Aqua Security","Security","Container Scan","Tier 1","Approved","trivy.dev"),
+        ("Snyk","Snyk Ltd.","Security","SCA/SAST","Tier 2","Trial","snyk.io"),
+        ("Cert-Manager","CNCF","Security","TLS Automation","Tier 2","Approved","cert-manager.io"),
+        ("SQLAlchemy","Michael Bayer","Library","ORM/Python","Tier 1","Approved","sqlalchemy.org"),
+        ("Pydantic","Samuel Colvin","Library","Validation/Python","Tier 1","Approved","pydantic.dev"),
+        ("Axios","Matt Zabriskie","Library","HTTP/JavaScript","Tier 1","Approved","axios-http.com"),
+        ("Lodash","JS Foundation","Library","Utility/JavaScript","Tier 2","Approved","lodash.com"),
+        ("Pandas","NumFOCUS","Library","Data/Python","Tier 1","Approved","pandas.pydata.org"),
+        ("NumPy","NumFOCUS","Library","Scientific/Python","Tier 2","Approved","numpy.org"),
+        ("Apache Log4j","Apache Foundation","Library","Logging/Java","Tier 3","Hold","logging.apache.org"),
+        ("Kong Gateway","Kong Inc.","Platform","API Gateway","Tier 1","Approved","konghq.com"),
+        ("AWS SQS","Amazon","Platform","Message Queue","Tier 2","Approved","aws.amazon.com/sqs"),
+        ("Apache ActiveMQ","Apache Foundation","Platform","Messaging","Tier 3","Deprecated","activemq.apache.org"),
+        ("Apache Spark","Apache Foundation","Platform","Data Processing","Tier 2","Approved","spark.apache.org"),
+        ("Power BI","Microsoft","Tool","Business Intelligence","Tier 1","Approved","powerbi.microsoft.com"),
+        ("Tableau","Salesforce","Tool","Business Intelligence","Tier 2","Approved","tableau.com"),
+        ("Apache Superset","Apache Foundation","Tool","BI/Self-service","Tier 2","Trial","superset.apache.org"),
+        ("TensorFlow","Google","Library","Machine Learning","Tier 2","Approved","tensorflow.org"),
+        ("PyTorch","Meta","Library","Machine Learning","Tier 2","Approved","pytorch.org"),
+        ("LangChain","LangChain Inc.","Library","LLM/AI","Tier 3","Assess","langchain.com"),
+        ("OpenAI API","OpenAI","Platform","LLM/AI","Tier 2","Trial","openai.com"),
+    ]
+
+    VERSIONS = {
+        "Python":       [("3.12.3","3","12","3","2024-05-15","2028-10","GA",1,1),("3.11.9","3","11","9","2024-04-02","2027-10","LTS",0,1),("3.10.14","3","10","14","2024-03-19","2026-10","Maintenance",0,0)],
+        "Java":         [("21.0.3","21","0","3","2024-04-16","2031-09","LTS",1,1),("17.0.11","17","0","11","2024-04-16","2029-09","LTS",0,1),("11.0.23","11","0","23","2024-04-16","2026-09","LTS",0,0)],
+        "TypeScript":   [("5.4.5","5","4","5","2024-04-03","","GA",1,0),("5.3.3","5","3","3","2024-01-10","","GA",0,0)],
+        "Go":           [("1.22.3","1","22","3","2024-05-07","","GA",1,0),("1.21.10","1","21","10","2024-05-07","","Maintenance",0,0)],
+        "Kotlin":       [("2.0.0","2","0","0","2024-05-21","","GA",1,0),("1.9.24","1","9","24","2024-05-23","","Maintenance",0,0)],
+        "FastAPI":      [("0.111.0","0","111","0","2024-04-25","","GA",1,0),("0.110.3","0","110","3","2024-04-15","","GA",0,0)],
+        "React":        [("18.3.1","18","3","1","2024-04-26","","GA",1,0),("18.2.0","18","2","0","2022-06-14","","Maintenance",0,0)],
+        "Spring Boot":  [("3.2.5","3","2","5","2024-05-16","2025-02","GA",1,0),("3.1.11","3","1","11","2024-04-17","2024-11","Maintenance",0,0),("2.7.18","2","7","18","2024-02-22","2023-11","EOL",0,0)],
+        "Next.js":      [("14.2.3","14","2","3","2024-05-07","","GA",1,0),("13.5.6","13","5","6","2023-10-16","","Maintenance",0,0)],
+        "Vue.js":       [("3.4.26","3","4","26","2024-04-24","","GA",1,0),("2.7.16","2","7","16","2023-12-01","2025-12","Maintenance",0,0)],
+        "Django":       [("5.0.6","5","0","6","2024-05-01","2025-04","GA",1,0),("4.2.13","4","2","13","2024-05-01","2026-04","LTS",0,1)],
+        "PostgreSQL":   [("16.3","16","3","0","2024-05-09","2028-11","GA",1,0),("15.7","15","7","0","2024-05-09","2027-11","Maintenance",0,0),("14.12","14","12","0","2024-05-09","2026-11","Maintenance",0,0),("13.15","13","15","0","2024-05-09","2025-11","Maintenance",0,0)],
+        "MySQL":        [("8.4.0","8","4","0","2024-04-30","2032-04","LTS",1,1),("8.0.37","8","0","37","2024-04-30","2026-04","Maintenance",0,0)],
+        "MongoDB":      [("7.0.9","7","0","9","2024-04-30","2027-08","GA",1,0),("6.0.15","6","0","15","2024-04-30","2025-07","Maintenance",0,0)],
+        "Redis":        [("7.2.5","7","2","5","2024-05-01","2027-01","GA",1,0),("7.0.15","7","0","15","2024-01-10","2026-01","Maintenance",0,0)],
+        "Kubernetes":   [("1.30.1","1","30","1","2024-05-22","2025-06","GA",1,0),("1.29.5","1","29","5","2024-05-22","2025-02","Maintenance",0,0),("1.28.10","1","28","10","2024-05-22","2024-10","Maintenance",0,0)],
+        "Docker":       [("26.1.3","26","1","3","2024-05-14","","GA",1,0),("25.0.5","25","0","5","2024-04-09","","Maintenance",0,0)],
+        "Apache Kafka": [("3.7.0","3","7","0","2024-03-04","","GA",1,0),("3.6.2","3","6","2","2024-02-07","","Maintenance",0,0)],
+        "Nginx":        [("1.26.1","1","26","1","2024-05-29","","Stable",1,0),("1.25.5","1","25","5","2024-04-23","","Mainline",0,0)],
+        "Node.js":      [("22.2.0","22","2","0","2024-05-15","2027-04","GA",1,0),("20.14.0","20","14","0","2024-06-01","2026-04","LTS",0,1),("18.20.3","18","20","3","2024-04-10","2025-04","Maintenance",0,0)],
+        "Ubuntu Server":[("24.04 LTS","24","04","0","2024-04-25","2029-04","LTS",1,1),("22.04 LTS","22","04","0","2022-04-21","2027-04","LTS",0,1),("20.04 LTS","20","04","0","2020-04-23","2025-04","Maintenance",0,0)],
+        "Keycloak":     [("24.0.5","24","0","5","2024-05-29","","GA",1,0),("23.0.7","23","0","7","2024-03-01","","Maintenance",0,0)],
+        "Terraform":    [("1.8.4","1","8","4","2024-05-30","","GA",1,0),("1.7.5","1","7","5","2024-03-27","","Maintenance",0,0)],
+        "Helm":         [("3.15.1","3","15","1","2024-05-23","","GA",1,0)],
+        "Kong Gateway": [("3.7.1","3","7","1","2024-05-08","","GA",1,0),("3.6.1","3","6","1","2024-03-01","","Maintenance",0,0)],
+        "Power BI":     [("May 2024","2024","5","0","2024-05-14","","GA",1,0)],
+        "Apache Log4j": [("2.23.1","2","23","1","2024-02-19","","GA",1,0),("2.17.2","2","17","2","2022-02-22","","Security-patch",0,0)],
+        "SQLite":       [("3.46.0","3","46","0","2024-05-23","","GA",1,0)],
+        "Pandas":       [("2.2.2","2","2","2","2024-04-10","","GA",1,0)],
+        "Elasticsearch":[("8.13.4","8","13","4","2024-05-16","","GA",1,0),("7.17.21","7","17","21","2024-04-09","","Maintenance",0,0)],
+        "Grafana":      [("10.4.3","10","4","3","2024-05-16","","GA",1,0),("9.5.17","9","5","17","2024-04-09","","Maintenance",0,0)],
+        "Prometheus":   [("2.52.0","2","52","0","2024-05-15","","GA",1,0)],
+        "ArgoCD":       [("2.11.2","2","11","2","2024-05-29","","GA",1,0),("2.10.11","2","10","11","2024-05-22","","Maintenance",0,0)],
+    }
+
+    CVES = {
+        "Apache Log4j": [("CVE-2021-44228","Critical",10.0,"Log4Shell: JNDI injection RCE","< 2.15.0","2.15.0","2021-12-10","Patched"),("CVE-2021-45046","Critical",9.0,"Log4Shell bypass via JNDI","< 2.16.0","2.16.0","2021-12-14","Patched"),("CVE-2021-45105","High",7.5,"Infinite recursion DoS","< 2.17.0","2.17.0","2021-12-18","Patched")],
+        "Spring Boot":  [("CVE-2022-22965","Critical",9.8,"Spring4Shell RCE","< 5.3.18","5.3.18","2022-03-31","Patched"),("CVE-2023-20873","High",7.5,"Actuator endpoint bypass","< 3.0.6","3.0.6","2023-04-20","Patched")],
+        "Apache Kafka": [("CVE-2023-25194","High",8.8,"JNDI injection via SASL","< 3.4.0","3.4.0","2023-02-07","Patched")],
+        "Nginx":        [("CVE-2024-24989","Medium",5.9,"HTTP/3 null pointer deref","< 1.25.4","1.25.4","2024-02-14","Patched"),("CVE-2021-23017","High",7.7,"Off-by-one heap write in resolver","< 1.20.1","1.20.1","2021-05-25","Patched")],
+        "PostgreSQL":   [("CVE-2024-0985","High",8.0,"SECURITY INVOKER view abuse","< 16.2","16.2","2024-02-08","Patched"),("CVE-2023-5869","High",8.8,"Integer overflow in array mod","< 15.5","15.5","2023-11-09","Patched")],
+        "MongoDB":      [("CVE-2024-1351","Medium",6.5,"Incorrect authorization check","< 7.0.6","7.0.6","2024-03-07","Patched")],
+        "Redis":        [("CVE-2023-41056","High",8.1,"Heap buffer overflow SINTERCARD","< 7.2.4","7.2.4","2024-01-09","Patched"),("CVE-2023-28856","Medium",6.5,"HRANDFIELD crash","< 7.0.11","7.0.11","2023-04-17","Patched")],
+        "PHP":          [("CVE-2024-4577","Critical",9.8,"Argument injection CGI (Windows)","< 8.3.8","8.3.8","2024-06-09","Patched"),("CVE-2023-3824","Critical",9.8,"Buffer underread phar","< 8.0.30","8.0.30","2023-08-11","Patched")],
+        "Kubernetes":   [("CVE-2023-5528","High",8.8,"Node privilege escalation","< 1.28.4","1.28.4","2023-11-14","Patched"),("CVE-2023-2727","High",6.5,"imagePolicyWebhook bypass","< 1.27.3","1.27.3","2023-06-15","Patched")],
+        "Docker":       [("CVE-2024-21626","High",8.6,"Container breakout runc WORKDIR","< 26.0.0","26.0.0","2024-01-31","Patched")],
+        "Elasticsearch":[("CVE-2023-31419","High",7.5,"StackOverflow via _search","< 8.9.1","8.9.1","2023-10-26","Patched")],
+        "Node.js":      [("CVE-2024-21892","High",7.8,"Code injection via PATH","< 20.11.1","20.11.1","2024-02-14","Patched")],
+    }
+
+    RADAR = [
+        ("Python","2026-Q1","Adopt","Languages & Frameworks"),("Java","2026-Q1","Adopt","Languages & Frameworks"),
+        ("TypeScript","2026-Q1","Adopt","Languages & Frameworks"),("Go","2026-Q1","Trial","Languages & Frameworks"),
+        ("Rust","2026-Q1","Assess","Languages & Frameworks"),("PHP","2026-Q1","Hold","Languages & Frameworks"),
+        ("Ruby","2026-Q1","Hold","Languages & Frameworks"),("FastAPI","2026-Q1","Adopt","Languages & Frameworks"),
+        ("React","2026-Q1","Adopt","Languages & Frameworks"),("Spring Boot","2026-Q1","Adopt","Languages & Frameworks"),
+        ("Next.js","2026-Q1","Adopt","Languages & Frameworks"),("Vue.js","2026-Q1","Trial","Languages & Frameworks"),
+        ("Django","2026-Q1","Adopt","Languages & Frameworks"),("NestJS","2026-Q1","Trial","Languages & Frameworks"),
+        ("Laravel","2026-Q1","Hold","Languages & Frameworks"),("Apache Log4j","2026-Q1","Hold","Languages & Frameworks"),
+        ("Kubernetes","2026-Q1","Adopt","Platforms"),("Docker","2026-Q1","Adopt","Platforms"),
+        ("Apache Kafka","2026-Q1","Adopt","Platforms"),("RabbitMQ","2026-Q1","Hold","Platforms"),
+        ("AWS","2026-Q1","Adopt","Platforms"),("Azure","2026-Q1","Adopt","Platforms"),
+        ("Kong Gateway","2026-Q1","Adopt","Platforms"),("Node.js","2026-Q1","Adopt","Platforms"),
+        ("Istio","2026-Q1","Trial","Platforms"),("Apache Spark","2026-Q1","Trial","Platforms"),
+        ("OpenAI API","2026-Q1","Assess","Platforms"),("Apache ActiveMQ","2026-Q1","Hold","Infrastructure"),
+        ("GitLab","2026-Q1","Adopt","Tools"),("GitHub Actions","2026-Q1","Adopt","Tools"),
+        ("ArgoCD","2026-Q1","Adopt","Tools"),("Terraform","2026-Q1","Adopt","Tools"),
+        ("SonarQube","2026-Q1","Adopt","Tools"),("Prometheus","2026-Q1","Adopt","Tools"),
+        ("Grafana","2026-Q1","Adopt","Tools"),("Jenkins","2026-Q1","Hold","Tools"),
+        ("Helm","2026-Q1","Adopt","Tools"),("Vault","2026-Q1","Adopt","Tools"),
+        ("Apache Airflow","2026-Q1","Trial","Tools"),("Power BI","2026-Q1","Adopt","Tools"),
+        ("Tableau","2026-Q1","Trial","Tools"),("LangChain","2026-Q1","Assess","Tools"),
+        ("PostgreSQL","2026-Q1","Adopt","Infrastructure"),("MySQL","2026-Q1","Adopt","Infrastructure"),
+        ("Redis","2026-Q1","Adopt","Infrastructure"),("MongoDB","2026-Q1","Trial","Infrastructure"),
+        ("Elasticsearch","2026-Q1","Adopt","Infrastructure"),("Oracle Database","2026-Q1","Hold","Infrastructure"),
+        ("Ubuntu Server","2026-Q1","Adopt","Infrastructure"),("Cloudflare","2026-Q1","Adopt","Infrastructure"),
+        # Previous quarter for movement tracking
+        ("Go","2025-Q3","Trial","Languages & Frameworks"),("NestJS","2025-Q3","Assess","Languages & Frameworks"),
+        ("Istio","2025-Q3","Assess","Platforms"),("Apache Spark","2025-Q3","Assess","Platforms"),
+        ("LangChain","2025-Q3","Assess","Tools"),("RabbitMQ","2025-Q3","Trial","Platforms"),
+    ]
+
+    RATIONALE = {
+        "Adopt":  "เทคโนโลยีนี้ผ่านการพิสูจน์ใน Production แล้ว แนะนำให้ใช้เป็น Standard",
+        "Trial":  "มีศักยภาพสูง กำลังทดสอบใน project จริง — ติดตามผลก่อนยกระดับ",
+        "Assess": "น่าสนใจ ให้ทีมศึกษาและทำ PoC ก่อนตัดสินใจ",
+        "Hold":   "ไม่แนะนำให้นำมาใช้ใหม่ — ให้วางแผน migration ออก",
+    }
+
+    # 1. tech_catalog
+    tech_id_map = {}
+    for row in TECH_DATA:
+        name, vendor, cat, subcat, tier, status, website = row
+        tid = uid("TC")
+        tech_id_map[name] = tid
+        conn.execute("""INSERT OR IGNORE INTO tech_catalog
+            (id,name,vendor,category,sub_category,tier,standard_status,website_url,created_by,created_at,updated_at)
+            VALUES(?,?,?,?,?,?,?,?,'system',?,?)""",
+            (tid, name, vendor, cat, subcat, tier, status, website, now, now))
+
+    # 2. tech_versions
+    ver_id_map = {}
+    for name, versions in VERSIONS.items():
+        tid = tech_id_map.get(name)
+        if not tid: continue
+        for v in versions:
+            label, major, minor, patch, rdate, eol, rtype, is_latest, is_lts = v
+            vid = uid("TV")
+            ver_id_map[(name, label)] = vid
+            eol_date = eol if eol else None
+            lifecycle = "EOL" if (eol_date and eol_date < "2025") else ("Maintenance-only" if rtype == "Maintenance" else "Active")
+            conn.execute("""INSERT OR IGNORE INTO tech_versions
+                (id,tech_id,version_label,major,minor,patch,release_type,release_date,eol_date,lifecycle_phase,is_latest,is_lts,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (vid, tid, label, int(major) if str(major).isdigit() else 0,
+                 int(minor) if str(minor).isdigit() else 0,
+                 int(patch) if str(patch).isdigit() else 0,
+                 rtype, rdate, eol_date, lifecycle, is_latest, is_lts, now))
+
+    # 3. tech_vulnerabilities
+    for name, cves in CVES.items():
+        tid = tech_id_map.get(name)
+        if not tid: continue
+        latest = conn.execute("SELECT id FROM tech_versions WHERE tech_id=? AND is_latest=1", (tid,)).fetchone()
+        vid = latest[0] if latest else None
+        for cve in cves:
+            cve_id, severity, cvss, desc, affected, fixed_in, pub_date, status = cve
+            conn.execute("""INSERT OR IGNORE INTO tech_vulnerabilities
+                (id,tech_id,version_id,cve_id,severity,cvss_score,description,affected_versions,
+                 fixed_in_version,published_date,status,fetched_at,created_at,updated_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (uid("CVE"), tid, vid, cve_id, severity, cvss, desc, affected,
+                 fixed_in, pub_date, status, now, now, now))
+
+    # 4. tech_radar
+    prev_ring = {n: r for n, q, r, _ in RADAR if q == "2025-Q3"}
+    for name, quarter, ring, quad in RADAR:
+        tid = tech_id_map.get(name)
+        if not tid: continue
+        conn.execute("""INSERT OR IGNORE INTO tech_radar
+            (id,tech_id,radar_date,ring,quadrant,rationale,decided_by,prev_ring,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (uid("TR"), tid, quarter, ring, quad, RATIONALE.get(ring,""), "ARB",
+             prev_ring.get(name) if quarter == "2026-Q1" else None, now))
+
+    print(f"  Tech Catalog seeded: {len(TECH_DATA)} tech, {sum(len(v) for v in VERSIONS.values())} versions, {sum(len(c) for c in CVES.values())} CVEs, {len(RADAR)} radar entries")
+
+
 def init_ea_domains_db():
     import hashlib
     now = datetime.utcnow().isoformat()
@@ -1857,6 +2209,10 @@ def init_ea_domains_db():
                 rows
             )
             print(f"  ETA coverage seeded: {len(rows)} rows")
+
+        # ── Tech Catalog seed (B32.44) ────────────────────────────────────────
+        if conn.execute("SELECT COUNT(*) FROM tech_catalog").fetchone()[0] == 0:
+            _seed_tech_catalog(conn)
 
     print(f"EA Domains DB ready: {EA_DOMAINS_DB_PATH}")
 
@@ -2397,6 +2753,42 @@ CREATE TABLE IF NOT EXISTS arb_recommendations (
     reason_text     TEXT DEFAULT '',
     is_mandatory    INTEGER DEFAULT 0,
     status          TEXT DEFAULT 'Pending'
+);
+
+CREATE TABLE IF NOT EXISTS deploy_nodes (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    node_type   TEXT NOT NULL DEFAULT 'Server',
+    environment TEXT DEFAULT 'Production',
+    provider    TEXT DEFAULT '',
+    region      TEXT DEFAULT '',
+    hostname    TEXT DEFAULT '',
+    ip_address  TEXT DEFAULT '',
+    os          TEXT DEFAULT '',
+    spec        TEXT DEFAULT '',
+    version     TEXT DEFAULT '',
+    status      TEXT DEFAULT 'Active',
+    notes       TEXT DEFAULT '',
+    tags        TEXT DEFAULT '[]',
+    x           REAL DEFAULT 0,
+    y           REAL DEFAULT 0,
+    created_at  TEXT DEFAULT (datetime('now')),
+    updated_at  TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS deploy_edges (
+    id          TEXT PRIMARY KEY,
+    src_type    TEXT NOT NULL,
+    src_id      TEXT NOT NULL,
+    tgt_type    TEXT NOT NULL,
+    tgt_id      TEXT NOT NULL,
+    edge_type   TEXT DEFAULT 'connects-to',
+    protocol    TEXT DEFAULT '',
+    port        TEXT DEFAULT '',
+    environment TEXT DEFAULT 'Production',
+    label       TEXT DEFAULT '',
+    notes       TEXT DEFAULT '',
+    created_at  TEXT DEFAULT (datetime('now'))
 );
 """
 
@@ -5633,7 +6025,7 @@ def arb_list_requests(
         return {"items": rows, "total": total}
 
 @app.post("/api/arb/requests", status_code=201)
-def arb_create_request(body: ArbRequestWrite, current_user: dict = Depends(_require_auth)):
+def arb_create_request(body: ArbRequestWrite, current_user: dict = Depends(_require_writer)):
     now = datetime.now().isoformat()
     today = datetime.now().strftime("%Y-%m-%d")
     with get_db() as conn:
@@ -5705,7 +6097,7 @@ def arb_get_request(arb_id: str, current_user: dict = Depends(_require_auth)):
         return data
 
 @app.put("/api/arb/requests/{arb_id}")
-def arb_update_request(arb_id: str, body: ArbRequestWrite, current_user: dict = Depends(_require_auth)):
+def arb_update_request(arb_id: str, body: ArbRequestWrite, current_user: dict = Depends(_require_writer)):
     now = datetime.now().isoformat()
     with get_db() as conn:
         r = conn.execute("SELECT * FROM arb_requests WHERE id=?", (arb_id,)).fetchone()
@@ -5758,7 +6150,7 @@ def arb_update_request(arb_id: str, body: ArbRequestWrite, current_user: dict = 
     return {"ok": True}
 
 @app.post("/api/arb/requests/{arb_id}/submit")
-def arb_submit_request(arb_id: str, current_user: dict = Depends(_require_auth)):
+def arb_submit_request(arb_id: str, current_user: dict = Depends(_require_writer)):
     now = datetime.now().isoformat()
     with get_db() as conn:
         conn.execute("UPDATE arb_requests SET status='Submitted', submitted_at=?, updated_at=? WHERE id=?", (now, now, arb_id))
@@ -5820,7 +6212,7 @@ def arb_list_comments(arb_id: str, current_user: dict = Depends(_require_auth)):
         return [dict(r) for r in conn.execute("SELECT * FROM arb_comments WHERE arb_request_id=? ORDER BY created_at DESC", (arb_id,)).fetchall()]
 
 @app.post("/api/arb/requests/{arb_id}/comments", status_code=201)
-def arb_add_comment(arb_id: str, body: ArbCommentWrite, current_user: dict = Depends(_require_auth)):
+def arb_add_comment(arb_id: str, body: ArbCommentWrite, current_user: dict = Depends(_require_writer)):
     now = datetime.now().isoformat()
     with get_db() as conn:
         conn.execute("INSERT INTO arb_comments(arb_request_id,reviewer_user,domain,comment_type,comment_text,severity,created_at) VALUES(?,?,?,?,?,?,?)",
@@ -5836,7 +6228,7 @@ def arb_list_findings(arb_id: str, current_user: dict = Depends(_require_auth)):
         return [dict(r) for r in conn.execute("SELECT * FROM arb_findings WHERE arb_request_id=? ORDER BY severity DESC, created_at", (arb_id,)).fetchall()]
 
 @app.post("/api/arb/requests/{arb_id}/findings", status_code=201)
-def arb_add_finding(arb_id: str, body: ArbFindingWrite, current_user: dict = Depends(_require_auth)):
+def arb_add_finding(arb_id: str, body: ArbFindingWrite, current_user: dict = Depends(_require_writer)):
     now = datetime.now().isoformat()
     finding_id = f"FND-{int(datetime.now().timestamp()*1000)}"
     with get_db() as conn:
@@ -5850,7 +6242,7 @@ def arb_add_finding(arb_id: str, body: ArbFindingWrite, current_user: dict = Dep
     return {"id": finding_id, "ok": True}
 
 @app.put("/api/arb/findings/{finding_id}")
-def arb_update_finding(finding_id: str, body: ArbFindingUpdate, current_user: dict = Depends(_require_auth)):
+def arb_update_finding(finding_id: str, body: ArbFindingUpdate, current_user: dict = Depends(_require_writer)):
     with get_db() as conn:
         fields, params = [], []
         if body.severity is not None:           fields.append("severity=?");            params.append(body.severity)
@@ -5907,7 +6299,7 @@ def arb_add_action(arb_id: str, body: ArbActionWrite, current_user: dict = Depen
     return {"id": action_id, "ok": True}
 
 @app.put("/api/arb/actions/{action_id}")
-def arb_update_action(action_id: str, body: ArbActionUpdate, current_user: dict = Depends(_require_auth)):
+def arb_update_action(action_id: str, body: ArbActionUpdate, current_user: dict = Depends(_require_writer)):
     now = datetime.now().isoformat()
     with get_db() as conn:
         fields, params = [], []
@@ -5988,6 +6380,1165 @@ def arb_export_csv(current_user: dict = Depends(_require_auth)):
                     headers={"Content-Disposition": "attachment; filename=arb_requests.csv"})
 
 # ─── STATIC + CATCH-ALL ────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# EA REPOSITORY  /api/repo/*
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _repo_get_object(obj_type: str, obj_id: str) -> dict | None:
+    """Fetch a single object from its source table/db by type and id."""
+    try:
+        if obj_type == "Application":
+            with get_db() as c:
+                r = c.execute("SELECT id,name,domain,status,owner,criticality,type FROM applications WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "BusinessCapability":
+            with get_ea_domains_db() as c:
+                r = c.execute("SELECT id,name,domain,status,priority FROM bcap WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "DataDomain":
+            with get_ea_domains_db() as c:
+                r = c.execute("SELECT id,name,domain,status,owner,classification FROM ddomain WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "TechnologyProduct":
+            with get_ea_domains_db() as c:
+                r = c.execute("SELECT id,name,vendor,category,standard_status,tier FROM tech_catalog WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "ArchitectureStandard":
+            with get_ea_domains_db() as c:
+                r = c.execute("SELECT * FROM repo_standards WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "ABB":
+            with get_esa_db() as c:
+                r = c.execute("SELECT id,domain,name,criticality,status FROM abb WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "Project":
+            with get_db() as c:
+                r = c.execute("SELECT id,name,status,priority,strategic_theme,pm,sponsor FROM projects WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "ARBDecision":
+            with get_db() as c:
+                r = c.execute("""SELECT d.id, d.arb_request_id, d.decision_type, d.decision_summary,
+                                        d.decided_by, d.decided_at, q.title as request_title
+                                 FROM arb_decisions d LEFT JOIN arb_requests q ON q.id=d.arb_request_id
+                                 WHERE d.arb_request_id=?""", (obj_id,)).fetchone()
+                return dict(r) if r else None
+        if obj_type == "Document":
+            with get_ea_domains_db() as c:
+                r = c.execute("SELECT id,doc_code,doc_type,title,version,status,domain,category,owner FROM ea_documents WHERE id=?", (obj_id,)).fetchone()
+                return dict(r) if r else None
+    except Exception:
+        return None
+    return None
+
+
+def _repo_log(conn, user_id: str, action: str, obj_type: str = "", obj_id: str = "", detail: str = ""):
+    try:
+        conn.execute("INSERT INTO repo_audit_log(user_id,action,object_type,object_id,detail) VALUES(?,?,?,?,?)",
+                     (user_id, action, obj_type, obj_id, detail))
+    except Exception:
+        pass
+
+
+# ── Home Summary ──────────────────────────────────────────────────────────────
+@app.get("/api/repo/home/summary")
+def repo_home_summary(current_user: dict = Depends(_require_auth)):
+    counts = {}
+    with get_db() as c:
+        counts["applications"] = c.execute("SELECT COUNT(*) FROM applications WHERE decommissioned=0").fetchone()[0]
+        counts["projects"]     = c.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+        counts["arb_decisions"]= c.execute("SELECT COUNT(*) FROM arb_decisions").fetchone()[0]
+    with get_ea_domains_db() as c:
+        counts["business_capabilities"] = c.execute("SELECT COUNT(*) FROM bcap").fetchone()[0]
+        counts["data_domains"]           = c.execute("SELECT COUNT(*) FROM ddomain").fetchone()[0]
+        counts["tech_products"]          = c.execute("SELECT COUNT(*) FROM tech_catalog").fetchone()[0]
+        counts["repo_links"]             = c.execute("SELECT COUNT(*) FROM repo_links").fetchone()[0]
+        counts["repo_standards"]         = c.execute("SELECT COUNT(*) FROM repo_standards WHERE status='Active'").fetchone()[0]
+        counts["documents"]              = c.execute("SELECT COUNT(*) FROM ea_documents").fetchone()[0]
+    with get_esa_db() as c:
+        counts["abb"] = c.execute("SELECT COUNT(*) FROM abb").fetchone()[0]
+        counts["sbb"] = c.execute("SELECT COUNT(*) FROM sbb").fetchone()[0]
+    return counts
+
+
+@app.get("/api/repo/home/recent")
+def repo_home_recent(current_user: dict = Depends(_require_auth)):
+    results = []
+    with get_db() as c:
+        rows = c.execute("""SELECT 'Application' as type, id, name as title, status, last_updated as updated_at
+                            FROM applications WHERE decommissioned=0 ORDER BY last_updated DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
+        rows = c.execute("""SELECT 'ARBDecision' as type, d.arb_request_id as id,
+                                   COALESCE(q.title,'ARB Request') as title,
+                                   d.decision_type as status, d.decided_at as updated_at
+                            FROM arb_decisions d LEFT JOIN arb_requests q ON q.id=d.arb_request_id
+                            ORDER BY d.decided_at DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
+    with get_ea_domains_db() as c:
+        rows = c.execute("""SELECT 'TechnologyProduct' as type, id, name as title,
+                                   standard_status as status, updated_at
+                            FROM tech_catalog ORDER BY updated_at DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
+        rows = c.execute("""SELECT 'ArchitectureStandard' as type, id, title, status, updated_at
+                            FROM repo_standards ORDER BY updated_at DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
+        rows = c.execute("""SELECT 'Document' as type, id, title, status, updated_at
+                            FROM ea_documents ORDER BY updated_at DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
+    results.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
+    return results[:20]
+
+
+# ── Unified Catalog ───────────────────────────────────────────────────────────
+@app.get("/api/repo/catalog")
+def repo_catalog(
+    q: str = "", obj_type: str = "", domain: str = "",
+    status: str = "", owner: str = "",
+    page: int = 1, limit: int = 50,
+    current_user: dict = Depends(_require_auth)
+):
+    results = []
+
+    def match(val):
+        return not q or q.lower() in (val or "").lower()
+
+    # Applications
+    if not obj_type or obj_type == "Application":
+        with get_db() as c:
+            rows = c.execute("SELECT id,name,domain,status,owner,criticality,type FROM applications WHERE decommissioned=0").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            if domain and d.get("domain","").lower() != domain.lower(): continue
+            if status and d.get("status","").lower() != status.lower(): continue
+            if owner and owner.lower() not in (d.get("owner","") or "").lower(): continue
+            results.append({**d, "object_type":"Application"})
+
+    # Business Capabilities
+    if not obj_type or obj_type == "BusinessCapability":
+        with get_ea_domains_db() as c:
+            rows = c.execute("SELECT id,name,domain,status,priority FROM bcap").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            if domain and d.get("domain","").lower() != domain.lower(): continue
+            if status and d.get("status","").lower() != status.lower(): continue
+            results.append({**d, "object_type":"BusinessCapability"})
+
+    # Data Domains
+    if not obj_type or obj_type == "DataDomain":
+        with get_ea_domains_db() as c:
+            rows = c.execute("SELECT id,name,domain,status,owner,classification FROM ddomain").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            if domain and d.get("domain","").lower() != domain.lower(): continue
+            if status and d.get("status","").lower() != status.lower(): continue
+            if owner and owner.lower() not in (d.get("owner","") or "").lower(): continue
+            results.append({**d, "object_type":"DataDomain"})
+
+    # Technology Products
+    if not obj_type or obj_type == "TechnologyProduct":
+        with get_ea_domains_db() as c:
+            rows = c.execute("SELECT id,name,vendor,category,standard_status,tier FROM tech_catalog").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            if status and d.get("standard_status","").lower() != status.lower(): continue
+            results.append({**d, "object_type":"TechnologyProduct", "status": d.get("standard_status")})
+
+    # Architecture Standards
+    if not obj_type or obj_type == "ArchitectureStandard":
+        with get_ea_domains_db() as c:
+            rows = c.execute("SELECT id,code,title,category,status,owner,version FROM repo_standards").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["title"]): continue
+            if status and d.get("status","").lower() != status.lower(): continue
+            if owner and owner.lower() not in (d.get("owner","") or "").lower(): continue
+            results.append({**d, "object_type":"ArchitectureStandard", "name": d["title"]})
+
+    # ABB
+    if not obj_type or obj_type == "ABB":
+        with get_esa_db() as c:
+            rows = c.execute("SELECT id,domain,name,criticality,status FROM abb").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            if domain and d.get("domain","").lower() != domain.lower(): continue
+            results.append({**d, "object_type":"ABB"})
+
+    # Projects
+    if not obj_type or obj_type == "Project":
+        with get_db() as c:
+            rows = c.execute("SELECT id,name,status,priority,strategic_theme,pm FROM projects").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            if status and d.get("status","").lower() != status.lower(): continue
+            results.append({**d, "object_type":"Project"})
+
+    # ARB Decisions
+    if not obj_type or obj_type == "ARBDecision":
+        with get_db() as c:
+            rows = c.execute("""SELECT d.arb_request_id as id, COALESCE(q.title,'') as name,
+                                       d.decision_type as status, d.decided_by as owner, d.decided_at
+                                FROM arb_decisions d LEFT JOIN arb_requests q ON q.id=d.arb_request_id""").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["name"]): continue
+            results.append({**d, "object_type":"ARBDecision"})
+
+    # Documents
+    if not obj_type or obj_type == "Document":
+        with get_ea_domains_db() as c:
+            rows = c.execute("SELECT id,doc_code,doc_type,title,version,status,domain,category,owner FROM ea_documents").fetchall()
+        for r in rows:
+            d = dict(r)
+            if not match(d["title"]): continue
+            if domain and d.get("domain","").lower() != domain.lower(): continue
+            if status and d.get("status","").lower() != status.lower(): continue
+            if owner and owner.lower() not in (d.get("owner","") or "").lower(): continue
+            results.append({**d, "object_type":"Document", "name": d["title"]})
+
+    total = len(results)
+    start = (page - 1) * limit
+    return {"total": total, "page": page, "limit": limit, "items": results[start:start+limit]}
+
+
+# ── Object Detail ─────────────────────────────────────────────────────────────
+@app.get("/api/repo/object/{obj_type}/{obj_id}")
+def repo_object_detail(obj_type: str, obj_id: str, current_user: dict = Depends(_require_auth)):
+    obj = _repo_get_object(obj_type, obj_id)
+    if not obj:
+        raise HTTPException(404, detail=f"{obj_type} '{obj_id}' not found")
+    with get_ea_domains_db() as c:
+        links_as_src = c.execute(
+            "SELECT * FROM repo_links WHERE src_type=? AND src_id=?", (obj_type, obj_id)).fetchall()
+        links_as_dst = c.execute(
+            "SELECT * FROM repo_links WHERE dst_type=? AND dst_id=?", (obj_type, obj_id)).fetchall()
+    links = [dict(r) for r in links_as_src] + [dict(r) for r in links_as_dst]
+    return {"object_type": obj_type, "object": obj, "links": links}
+
+
+@app.get("/api/repo/object/{obj_type}/{obj_id}/links")
+def repo_object_links(obj_type: str, obj_id: str, current_user: dict = Depends(_require_auth)):
+    with get_ea_domains_db() as c:
+        src = c.execute("SELECT * FROM repo_links WHERE src_type=? AND src_id=?", (obj_type, obj_id)).fetchall()
+        dst = c.execute("SELECT * FROM repo_links WHERE dst_type=? AND dst_id=?", (obj_type, obj_id)).fetchall()
+    result = []
+    for r in [dict(x) for x in src]:
+        peer = _repo_get_object(r["dst_type"], r["dst_id"])
+        result.append({**r, "peer": peer, "direction": "outbound"})
+    for r in [dict(x) for x in dst]:
+        peer = _repo_get_object(r["src_type"], r["src_id"])
+        result.append({**r, "peer": peer, "direction": "inbound"})
+    return result
+
+
+# ── Relationships CRUD ────────────────────────────────────────────────────────
+@app.post("/api/repo/links", status_code=201)
+def repo_create_link(body: dict, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["editor","admin"])
+    now = _now()
+    lid = "RL-" + uuid.uuid4().hex[:6].upper()
+    actor = current_user.get('sub', current_user.get('username', ''))
+    try:
+        with get_ea_domains_db() as c:
+            c.execute("""INSERT INTO repo_links(id,src_type,src_id,dst_type,dst_id,link_type,strength,note,created_by,created_at,updated_at)
+                         VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                      (lid, body["src_type"], body["src_id"], body["dst_type"], body["dst_id"],
+                       body.get("link_type","Supports"), body.get("strength","Primary"),
+                       body.get("note",""), actor, now, now))
+            _repo_log(c, actor, "CREATE_LINK", body["src_type"], body["src_id"],
+                      f"{body['src_type']}/{body['src_id']} --{body.get('link_type','Supports')}--> {body['dst_type']}/{body['dst_id']}")
+            c.commit()
+    except Exception as e:
+        if "UNIQUE" in str(e):
+            raise HTTPException(409, detail="Link already exists")
+        raise HTTPException(400, detail=str(e))
+    return {"id": lid, "status": "created"}
+
+
+@app.delete("/api/repo/links/{link_id}", status_code=204)
+def repo_delete_link(link_id: str, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["editor","admin"])
+    actor = current_user.get('sub', current_user.get('username', ''))
+    with get_ea_domains_db() as c:
+        row = c.execute("SELECT * FROM repo_links WHERE id=?", (link_id,)).fetchone()
+        if not row:
+            raise HTTPException(404)
+        c.execute("DELETE FROM repo_links WHERE id=?", (link_id,))
+        _repo_log(c, actor, "DELETE_LINK", row["src_type"], row["src_id"], f"deleted link {link_id}")
+        c.commit()
+
+
+# ── Standards ─────────────────────────────────────────────────────────────────
+@app.get("/api/repo/standards")
+def repo_list_standards(
+    q: str = "", category: str = "", status: str = "",
+    page: int = 1, limit: int = 50,
+    current_user: dict = Depends(_require_auth)
+):
+    sql = "SELECT * FROM repo_standards WHERE 1=1"
+    params: list = []
+    if q:        sql += " AND (title LIKE ? OR code LIKE ? OR description LIKE ?)"; params += [f"%{q}%",f"%{q}%",f"%{q}%"]
+    if category: sql += " AND category=?"; params.append(category)
+    if status:   sql += " AND status=?";   params.append(status)
+    sql += " ORDER BY code"
+    with get_ea_domains_db() as c:
+        rows = c.execute(sql, params).fetchall()
+    total = len(rows)
+    start = (page-1)*limit
+    return {"total": total, "page": page, "limit": limit, "items": [dict(r) for r in rows[start:start+limit]]}
+
+
+@app.post("/api/repo/standards", status_code=201)
+def repo_create_standard(body: dict, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["editor","admin"])
+    now = _now()
+    actor = current_user.get('sub', current_user.get('username', ''))
+    sid = "STD-" + uuid.uuid4().hex[:6].upper()
+    code = body.get("code") or sid
+    with get_ea_domains_db() as c:
+        c.execute("""INSERT INTO repo_standards(id,code,category,title,description,rationale,guidance,
+                     status,version,owner,effective_date,review_date,tags,created_by,created_at,updated_at)
+                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                  (sid, code, body.get("category",""), body["title"],
+                   body.get("description",""), body.get("rationale",""), body.get("guidance",""),
+                   body.get("status","Active"), body.get("version","1.0"), body.get("owner",""),
+                   body.get("effective_date",""), body.get("review_date",""),
+                   json.dumps(body.get("tags",[])), actor, now, now))
+        _repo_log(c, actor, "CREATE_STANDARD", "ArchitectureStandard", sid, body["title"])
+        c.commit()
+    return {"id": sid, "code": code, "status": "created"}
+
+
+@app.get("/api/repo/standards/{std_id}")
+def repo_get_standard(std_id: str, current_user: dict = Depends(_require_auth)):
+    with get_ea_domains_db() as c:
+        row = c.execute("SELECT * FROM repo_standards WHERE id=?", (std_id,)).fetchone()
+        if not row: raise HTTPException(404)
+        links = c.execute("SELECT * FROM repo_links WHERE (src_type='ArchitectureStandard' AND src_id=?) OR (dst_type='ArchitectureStandard' AND dst_id=?)", (std_id,std_id)).fetchall()
+    return {"standard": dict(row), "links": [dict(l) for l in links]}
+
+
+@app.put("/api/repo/standards/{std_id}")
+def repo_update_standard(std_id: str, body: dict, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["editor","admin"])
+    now = _now()
+    actor = current_user.get('sub', current_user.get('username', ''))
+    with get_ea_domains_db() as c:
+        if not c.execute("SELECT 1 FROM repo_standards WHERE id=?", (std_id,)).fetchone():
+            raise HTTPException(404)
+        c.execute("""UPDATE repo_standards SET category=?,title=?,description=?,rationale=?,guidance=?,
+                     status=?,version=?,owner=?,effective_date=?,review_date=?,tags=?,updated_at=?
+                     WHERE id=?""",
+                  (body.get("category",""), body.get("title",""), body.get("description",""),
+                   body.get("rationale",""), body.get("guidance",""), body.get("status","Active"),
+                   body.get("version","1.0"), body.get("owner",""),
+                   body.get("effective_date",""), body.get("review_date",""),
+                   json.dumps(body.get("tags",[])), now, std_id))
+        _repo_log(c, actor, "UPDATE_STANDARD", "ArchitectureStandard", std_id, body.get("title",""))
+        c.commit()
+    return {"id": std_id, "status": "updated"}
+
+
+@app.delete("/api/repo/standards/{std_id}", status_code=204)
+def repo_delete_standard(std_id: str, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["admin"])
+    actor = current_user.get('sub', current_user.get('username', ''))
+    with get_ea_domains_db() as c:
+        if not c.execute("SELECT 1 FROM repo_standards WHERE id=?", (std_id,)).fetchone():
+            raise HTTPException(404)
+        c.execute("DELETE FROM repo_standards WHERE id=?", (std_id,))
+        _repo_log(c, actor, "DELETE_STANDARD", "ArchitectureStandard", std_id, "")
+        c.commit()
+
+
+# ── Patterns (ABB / SBB) ──────────────────────────────────────────────────────
+@app.get("/api/repo/patterns")
+def repo_list_patterns(
+    q: str = "", domain: str = "",
+    page: int = 1, limit: int = 50,
+    current_user: dict = Depends(_require_auth)
+):
+    sql = """SELECT a.id, a.domain, a.name, a.criticality, a.status,
+                    COUNT(DISTINCT s.id) as sbb_count,
+                    COUNT(DISTINCT cov.id) as app_count
+             FROM abb a
+             LEFT JOIN sbb s ON s.abb_id=a.id
+             LEFT JOIN abb_app_coverage cov ON cov.abb_id=a.id
+             WHERE 1=1"""
+    params: list = []
+    if q:      sql += " AND (a.name LIKE ? OR a.domain LIKE ?)"; params += [f"%{q}%",f"%{q}%"]
+    if domain: sql += " AND a.domain=?"; params.append(domain)
+    sql += " GROUP BY a.id ORDER BY a.domain, a.name"
+    with get_esa_db() as c:
+        rows = c.execute(sql, params).fetchall()
+    total = len(rows)
+    start = (page-1)*limit
+    return {"total": total, "page": page, "limit": limit, "items": [dict(r) for r in rows[start:start+limit]]}
+
+
+@app.get("/api/repo/patterns/{abb_id}")
+def repo_get_pattern(abb_id: str, current_user: dict = Depends(_require_auth)):
+    with get_esa_db() as c:
+        abb = c.execute("SELECT * FROM abb WHERE id=?", (abb_id,)).fetchone()
+        if not abb: raise HTTPException(404)
+        sbbs = c.execute("SELECT * FROM sbb WHERE abb_id=?", (abb_id,)).fetchall()
+        coverage = c.execute("SELECT * FROM abb_app_coverage WHERE abb_id=?", (abb_id,)).fetchall()
+
+    # Lookup app names from appport.db (different DB)
+    coverage_list = [dict(c) for c in coverage]
+    if coverage_list:
+        app_ids = list({r["app_id"] for r in coverage_list if r.get("app_id")})
+        with get_db() as ac:
+            rows = ac.execute(
+                f"SELECT id, name FROM applications WHERE id IN ({','.join('?'*len(app_ids))})",
+                app_ids
+            ).fetchall()
+        app_name_map = {r["id"]: r["name"] for r in rows}
+        for r in coverage_list:
+            r["app_name"] = app_name_map.get(r.get("app_id"), r.get("app_id",""))
+
+    return {"abb": dict(abb), "sbbs": [dict(s) for s in sbbs], "coverage": coverage_list}
+
+
+# ── Decisions ─────────────────────────────────────────────────────────────────
+@app.get("/api/repo/decisions")
+def repo_list_decisions(
+    q: str = "", decision_type: str = "", decided_by: str = "",
+    from_date: str = "", to_date: str = "",
+    page: int = 1, limit: int = 50,
+    current_user: dict = Depends(_require_auth)
+):
+    sql = """SELECT d.id, d.arb_request_id, d.decision_type, d.decision_summary,
+                    d.rationale, d.key_risks, d.decided_by, d.decided_at,
+                    COALESCE(q.title,'') as request_title,
+                    COALESCE(q.request_type,'') as request_type
+             FROM arb_decisions d
+             LEFT JOIN arb_requests q ON q.id=d.arb_request_id
+             WHERE 1=1"""
+    params: list = []
+    if q:             sql += " AND (q.title LIKE ? OR d.decision_summary LIKE ?)"; params += [f"%{q}%",f"%{q}%"]
+    if decision_type: sql += " AND d.decision_type=?"; params.append(decision_type)
+    if decided_by:    sql += " AND d.decided_by LIKE ?"; params.append(f"%{decided_by}%")
+    if from_date:     sql += " AND d.decided_at >= ?"; params.append(from_date)
+    if to_date:       sql += " AND d.decided_at <= ?"; params.append(to_date)
+    sql += " ORDER BY d.decided_at DESC"
+    with get_db() as c:
+        rows = c.execute(sql, params).fetchall()
+    total = len(rows)
+    start = (page-1)*limit
+    return {"total": total, "page": page, "limit": limit, "items": [dict(r) for r in rows[start:start+limit]]}
+
+
+@app.get("/api/repo/decisions/{arb_request_id}")
+def repo_get_decision(arb_request_id: str, current_user: dict = Depends(_require_auth)):
+    with get_db() as c:
+        dec = c.execute("""SELECT d.*, COALESCE(q.title,'') as request_title,
+                                  q.request_type, q.objective, q.summary as request_summary
+                           FROM arb_decisions d LEFT JOIN arb_requests q ON q.id=d.arb_request_id
+                           WHERE d.arb_request_id=?""", (arb_request_id,)).fetchone()
+        if not dec: raise HTTPException(404)
+        apps = c.execute("""SELECT a.id, a.name FROM arb_request_applications ra
+                            JOIN applications a ON a.id=ra.app_id
+                            WHERE ra.arb_request_id=?""", (arb_request_id,)).fetchall()
+        actions = c.execute("SELECT * FROM arb_actions WHERE arb_request_id=?", (arb_request_id,)).fetchall()
+    with get_ea_domains_db() as c:
+        links = c.execute("SELECT * FROM repo_links WHERE (src_type='ARBDecision' AND src_id=?) OR (dst_type='ARBDecision' AND dst_id=?)",
+                          (arb_request_id, arb_request_id)).fetchall()
+    return {
+        "decision": dict(dec),
+        "applications": [dict(a) for a in apps],
+        "actions": [dict(a) for a in actions],
+        "links": [dict(l) for l in links]
+    }
+
+
+# ── Relationships Browser ─────────────────────────────────────────────────────
+@app.get("/api/repo/relationships")
+def repo_list_relationships(
+    src_type: str = "", dst_type: str = "", link_type: str = "",
+    q: str = "", page: int = 1, limit: int = 100,
+    current_user: dict = Depends(_require_auth)
+):
+    sql = "SELECT * FROM repo_links WHERE 1=1"
+    params: list = []
+    if src_type:  sql += " AND src_type=?";  params.append(src_type)
+    if dst_type:  sql += " AND dst_type=?";  params.append(dst_type)
+    if link_type: sql += " AND link_type=?"; params.append(link_type)
+    if q:         sql += " AND (src_id LIKE ? OR dst_id LIKE ? OR note LIKE ?)"; params += [f"%{q}%",f"%{q}%",f"%{q}%"]
+    sql += " ORDER BY created_at DESC"
+    with get_ea_domains_db() as c:
+        rows = c.execute(sql, params).fetchall()
+    total = len(rows)
+    start = (page-1)*limit
+    items = []
+    for r in rows[start:start+limit]:
+        d = dict(r)
+        d["src_object"] = _repo_get_object(d["src_type"], d["src_id"])
+        d["dst_object"] = _repo_get_object(d["dst_type"], d["dst_id"])
+        items.append(d)
+    return {"total": total, "page": page, "limit": limit, "items": items}
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+_DOC_TEMPLATES = {
+    "Policy": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Version:** 1.0 | **Status:** Draft | **Owner:** EA Team
+
+## 1. Purpose & Objectives
+อธิบายวัตถุประสงค์และเป้าหมายของนโยบายนี้
+
+## 2. Scope
+ระบุขอบเขตของนโยบาย — ระบบ, ทีม, หรือกระบวนการที่ครอบคลุม
+
+## 3. Policy Statements
+1. **[Statement 1]** — ข้อกำหนดที่ 1
+2. **[Statement 2]** — ข้อกำหนดที่ 2
+3. **[Statement 3]** — ข้อกำหนดที่ 3
+
+## 4. Roles & Responsibilities
+| Role | Responsibility |
+|------|----------------|
+| EA Team | กำหนดและดูแลนโยบาย |
+| Application Owner | ปฏิบัติตามนโยบาย |
+| IT Security | ตรวจสอบการปฏิบัติตาม |
+
+## 5. Related Standards
+อ้างอิง Architecture Standards ที่เกี่ยวข้อง (STD-xxx)
+
+## 6. Related Procedures
+อ้างอิง Procedure ที่อธิบายวิธีปฏิบัติตามนโยบายนี้
+
+## 7. Exceptions & Waiver Process
+ระบุขั้นตอนการขอยกเว้น หรืออ้างอิง STD-GOV-014
+
+## 8. Compliance & Enforcement
+ระบุผลของการไม่ปฏิบัติตาม
+
+## 9. Review Schedule
+นโยบายนี้จะทบทวนทุก 12 เดือน
+
+## 10. Change History
+| Version | Date | Changed By | Summary |
+|---------|------|------------|---------|
+| 1.0 | {DATE} | EA Team | Initial release |
+""",
+
+    "Procedure": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Version:** 1.0 | **Status:** Draft | **Owner:** EA Team
+
+## 1. Purpose
+อธิบายวัตถุประสงค์ของ Procedure นี้
+
+## 2. Scope
+ระบุขอบเขต — ใครต้องปฏิบัติตาม และกรณีใดบ้าง
+
+## 3. Roles & Responsibilities
+| Role | Responsibility |
+|------|----------------|
+| Requestor | ผู้ยื่น request |
+| EA Reviewer | ผู้ review |
+| EA Lead | ผู้อนุมัติ |
+
+## 4. Prerequisites
+- รายการสิ่งที่ต้องเตรียมก่อน
+- เอกสารที่ต้องมี
+
+## 5. Procedure Steps
+
+### Step 1 — [ชื่อขั้นตอน]
+คำอธิบายรายละเอียด
+
+### Step 2 — [ชื่อขั้นตอน]
+คำอธิบายรายละเอียด
+
+### Step 3 — [ชื่อขั้นตอน]
+คำอธิบายรายละเอียด
+
+## 6. Inputs & Outputs
+| Item | Type | Description |
+|------|------|-------------|
+| [Input] | Input | คำอธิบาย |
+| [Output] | Output | คำอธิบาย |
+
+## 7. Related Documents
+- นโยบายที่เกี่ยวข้อง (EA-POL-xxx)
+- Standards ที่อ้างอิง (STD-xxx)
+
+## 8. Change History
+| Version | Date | Changed By | Summary |
+|---------|------|------------|---------|
+| 1.0 | {DATE} | EA Team | Initial release |
+""",
+
+    "Guideline": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Version:** 1.0 | **Status:** Draft | **Owner:** EA Team
+
+## 1. Introduction
+แนะนำ Guideline นี้และสาเหตุที่จัดทำ
+
+## 2. Principles
+หลักการสำคัญที่ Guideline นี้ยึดถือ
+
+## 3. Recommended Practices
+### 3.1 [หัวข้อที่ 1]
+- แนวทางที่ 1
+- แนวทางที่ 2
+
+### 3.2 [หัวข้อที่ 2]
+- แนวทางที่ 1
+- แนวทางที่ 2
+
+## 4. Examples
+```
+ตัวอย่างการปฏิบัติที่ดี
+```
+
+## 5. Anti-patterns (สิ่งที่ควรหลีกเลี่ยง)
+- ❌ สิ่งที่ไม่ควรทำที่ 1
+- ❌ สิ่งที่ไม่ควรทำที่ 2
+
+## 6. Related Standards
+อ้างอิง Standards ที่ Guideline นี้ขยายความ
+
+## 7. Change History
+| Version | Date | Changed By | Summary |
+|---------|------|------------|---------|
+| 1.0 | {DATE} | EA Team | Initial release |
+""",
+
+    "ADD": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Version:** 1.0 | **Status:** Draft | **Application:** [APP-XXX]
+
+---
+
+## 1. Executive Summary
+สรุปสถาปัตยกรรมของระบบในภาพรวม 3-5 ประโยค
+
+## 2. System Overview & Business Context
+- **Business Purpose:** วัตถุประสงค์ทางธุรกิจ
+- **Business Capabilities Supported:** BCap ที่รองรับ
+- **Key Stakeholders:** ผู้มีส่วนได้ส่วนเสียหลัก
+
+## 3. Architecture Goals & Constraints
+### Quality Attributes
+| Attribute | Requirement | Target |
+|-----------|-------------|--------|
+| Availability | 99.9% uptime | SLA |
+| Performance | < 200ms response | p95 |
+| Scalability | 10,000 concurrent users | Peak load |
+
+### Architecture Principles Applied
+- STD-xxx: [ชื่อ Standard]
+
+## 4. Logical Architecture
+### Component Diagram
+```
+[Client Layer]
+    ↓ HTTPS
+[API Gateway / Load Balancer]
+    ↓
+[Application Services]
+    ↓
+[Data Layer]
+```
+
+### Layer Description
+| Layer | Component | Technology | Responsibility |
+|-------|-----------|------------|----------------|
+| Presentation | Web App | React | UI/UX |
+| API | REST API | FastAPI | Business Logic |
+| Data | Database | PostgreSQL | Persistence |
+
+## 5. Data Architecture
+- **Data Domains Involved:** DDOM-xxx
+- **PII Data:** Yes/No — [รายละเอียด]
+- **Data Classification:** Internal/Confidential
+
+## 6. Integration Architecture
+| System | Direction | Protocol | Description |
+|--------|-----------|----------|-------------|
+| [System A] | Inbound | REST API | [คำอธิบาย] |
+| [System B] | Outbound | Event | [คำอธิบาย] |
+
+## 7. Security Architecture
+- **Authentication:** [วิธีการ]
+- **Authorization:** [วิธีการ]
+- **ABB Coverage:** ABB-001, ABB-005
+- **Compliance:** [Framework]
+
+## 8. Technology Stack
+| Category | Technology | Version | Standard Status |
+|----------|-----------|---------|-----------------|
+| Language | [Language] | [ver] | Approved |
+| Framework | [Framework] | [ver] | Approved |
+| Database | [DB] | [ver] | Approved |
+
+## 9. Deployment Architecture
+- **Environment:** Cloud / On-Premise / Hybrid
+- **DR Strategy:** [คำอธิบาย]
+- **Backup:** [คำอธิบาย]
+
+## 10. Risks & Open Issues
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| [Risk 1] | High | [Mitigation] |
+
+## 11. ARB Decision Reference
+- ARB Request: [ARB-YYYY-NNNN]
+- Decision: [Approved/Conditionally Approved]
+- Key Conditions: [รายการ]
+
+## 12. Change History
+| Version | Date | Changed By | Summary |
+|---------|------|------------|---------|
+| 1.0 | {DATE} | EA Team | Initial draft |
+""",
+
+    "ADR": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Date:** {DATE} | **Status:** Accepted | **Application:** [APP-XXX]
+
+## Context & Problem
+อธิบาย Context และปัญหาที่ต้องตัดสินใจ
+
+## Decision Drivers
+- ปัจจัยที่ 1 ที่ใช้ในการตัดสินใจ
+- ปัจจัยที่ 2 ที่ใช้ในการตัดสินใจ
+- ปัจจัยที่ 3 ที่ใช้ในการตัดสินใจ
+
+## Considered Options
+1. **Option A** — [ชื่อตัวเลือก]
+2. **Option B** — [ชื่อตัวเลือก]
+3. **Option C** — [ชื่อตัวเลือก]
+
+## Decision Outcome
+**Chosen Option: Option A** — เหตุผลที่เลือก
+
+### Positive Consequences
+- ✅ ข้อดีที่ 1
+- ✅ ข้อดีที่ 2
+
+### Negative Consequences
+- ⚠️ trade-off ที่ยอมรับได้ที่ 1
+- ⚠️ trade-off ที่ยอมรับได้ที่ 2
+
+## Pros and Cons of the Options
+### Option A
+- ✅ ข้อดี 1
+- ❌ ข้อเสีย 1
+
+### Option B
+- ✅ ข้อดี 1
+- ❌ ข้อเสีย 1
+
+## Links
+- Supersedes: [ADR เดิม ถ้ามี]
+- Related: [Standards / Policy ที่เกี่ยวข้อง]
+""",
+
+    "Template": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Version:** 1.0 | **Type:** Template
+
+> คำอธิบาย: Template นี้ใช้สำหรับ [ประเภทเอกสาร] — copy แล้วแก้ไขตามความเหมาะสม
+
+## Section 1 — [หัวข้อ]
+[เนื้อหา placeholder]
+
+## Section 2 — [หัวข้อ]
+[เนื้อหา placeholder]
+
+## Section 3 — [หัวข้อ]
+[เนื้อหา placeholder]
+""",
+
+    "Runbook": """# {TITLE}
+
+**Code:** {DOC_CODE} | **Version:** 1.0 | **Severity:** P1/P2
+
+## Overview
+อธิบายสถานการณ์ที่ต้องใช้ Runbook นี้
+
+## Symptoms
+- อาการที่ 1
+- อาการที่ 2
+
+## Prerequisites
+- สิทธิ์ที่ต้องการ
+- เครื่องมือที่ต้องการ
+
+## Diagnosis Steps
+### Step 1 — ตรวจสอบ [อะไร]
+```bash
+# command ตรวจสอบ
+```
+
+### Step 2 — [ชื่อขั้นตอน]
+[คำอธิบาย]
+
+## Resolution
+### Resolution A — [กรณี]
+```bash
+# command แก้ไข
+```
+
+## Escalation
+หากแก้ไขไม่ได้ให้ escalate ไปที่: [ทีม/บุคคล]
+
+## Post-Incident
+- [ ] บันทึก Incident
+- [ ] แจ้ง Stakeholders
+- [ ] ทำ Post-mortem ถ้า P1
+"""
+}
+
+
+@app.get("/api/repo/documents")
+def repo_list_documents(
+    doc_type: str = "", domain: str = "", category: str = "",
+    status: str = "", app_id: str = "",
+    q: str = "", page: int = 1, limit: int = 50,
+    current_user: dict = Depends(_require_auth)
+):
+    with get_ea_domains_db() as c:
+        sql = "SELECT id,doc_code,doc_type,title,version,status,domain,category,owner,confidentiality,summary,effective_date,review_date,updated_at FROM ea_documents WHERE 1=1"
+        params: list = []
+        if doc_type:  sql += " AND doc_type=?";  params.append(doc_type)
+        if domain:    sql += " AND domain=?";    params.append(domain)
+        if category:  sql += " AND category=?";  params.append(category)
+        if status:    sql += " AND status=?";    params.append(status)
+        if q:         sql += " AND (title LIKE ? OR doc_code LIKE ? OR summary LIKE ?)"; params += [f"%{q}%",f"%{q}%",f"%{q}%"]
+        sql += " ORDER BY doc_type, doc_code"
+        rows = c.execute(sql, params).fetchall()
+    items = [dict(r) for r in rows]
+
+    # Filter by app_id via repo_links
+    if app_id:
+        with get_ea_domains_db() as c:
+            linked_doc_ids = set(r[0] for r in c.execute(
+                "SELECT src_id FROM repo_links WHERE src_type='Document' AND dst_type='Application' AND dst_id=?"
+                " UNION SELECT dst_id FROM repo_links WHERE dst_type='Document' AND src_type='Application' AND src_id=?",
+                (app_id, app_id)).fetchall())
+        items = [x for x in items if x["id"] in linked_doc_ids]
+
+    total = len(items)
+    start = (page - 1) * limit
+    return {"total": total, "page": page, "limit": limit, "items": items[start:start+limit]}
+
+
+@app.post("/api/repo/documents", status_code=201)
+def repo_create_document(body: dict, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["editor", "admin"])
+    import uuid, datetime
+    actor = current_user.get("sub", current_user.get("username", ""))
+    now = datetime.datetime.utcnow().isoformat()
+    doc_id = str(uuid.uuid4())
+    doc_code = body.get("doc_code", "").strip()
+    if not doc_code:
+        raise HTTPException(400, "doc_code is required")
+    if not body.get("title"):
+        raise HTTPException(400, "title is required")
+    if not body.get("doc_type"):
+        raise HTTPException(400, "doc_type is required")
+    with get_ea_domains_db() as c:
+        if c.execute("SELECT 1 FROM ea_documents WHERE doc_code=?", (doc_code,)).fetchone():
+            raise HTTPException(409, f"doc_code '{doc_code}' already exists")
+        c.execute("""INSERT INTO ea_documents
+            (id,doc_code,doc_type,title,version,status,domain,category,scope,summary,content,
+             confidentiality,owner,approved_by,effective_date,review_date,expiry_date,tags,created_by,created_at,updated_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (doc_id, doc_code, body["doc_type"], body["title"],
+             body.get("version","1.0"), body.get("status","Draft"),
+             body.get("domain",""), body.get("category",""),
+             body.get("scope",""), body.get("summary",""), body.get("content",""),
+             body.get("confidentiality","Internal"), body.get("owner", actor),
+             body.get("approved_by",""), body.get("effective_date",""),
+             body.get("review_date",""), body.get("expiry_date",""),
+             body.get("tags","[]"), actor, now, now))
+        _repo_log(c, actor, "CREATE_DOCUMENT", "Document", doc_id, doc_code)
+        c.commit()
+    return {"id": doc_id, "doc_code": doc_code}
+
+
+@app.get("/api/repo/documents/templates/{doc_type}")
+def repo_get_template(doc_type: str, current_user: dict = Depends(_require_auth)):
+    import datetime
+    tmpl = _DOC_TEMPLATES.get(doc_type)
+    if not tmpl:
+        raise HTTPException(404, f"No template for doc_type '{doc_type}'")
+    filled = tmpl.replace("{DATE}", datetime.date.today().isoformat()).replace("{TITLE}", f"[{doc_type} Title]").replace("{DOC_CODE}", f"[CODE]")
+    return {"doc_type": doc_type, "template": filled}
+
+
+@app.get("/api/repo/documents/{doc_id}")
+def repo_get_document(doc_id: str, current_user: dict = Depends(_require_auth)):
+    with get_ea_domains_db() as c:
+        row = c.execute("SELECT * FROM ea_documents WHERE id=?", (doc_id,)).fetchone()
+        if not row:
+            row = c.execute("SELECT * FROM ea_documents WHERE doc_code=?", (doc_id,)).fetchone()
+        if not row: raise HTTPException(404)
+        doc = dict(row)
+        links = c.execute(
+            "SELECT * FROM repo_links WHERE (src_type='Document' AND src_id=?) OR (dst_type='Document' AND dst_id=?)",
+            (doc["id"], doc["id"])).fetchall()
+        versions = c.execute(
+            "SELECT id,version,change_summary,changed_by,changed_at,status_snapshot FROM ea_doc_versions WHERE doc_id=? ORDER BY changed_at DESC",
+            (doc["id"],)).fetchall()
+    return {
+        "document": doc,
+        "links": [dict(l) for l in links],
+        "versions": [dict(v) for v in versions]
+    }
+
+
+@app.put("/api/repo/documents/{doc_id}")
+def repo_update_document(doc_id: str, body: dict, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["editor", "admin"])
+    import datetime
+    actor = current_user.get("sub", current_user.get("username", ""))
+    now = datetime.datetime.utcnow().isoformat()
+    with get_ea_domains_db() as c:
+        old = c.execute("SELECT * FROM ea_documents WHERE id=?", (doc_id,)).fetchone()
+        if not old: raise HTTPException(404)
+        old_d = dict(old)
+        # Save version snapshot if content changed or version bumped
+        if body.get("save_version") or body.get("version","") != old_d.get("version",""):
+            c.execute("""INSERT INTO ea_doc_versions(doc_id,version,change_summary,content_snapshot,status_snapshot,changed_by,changed_at)
+                         VALUES(?,?,?,?,?,?,?)""",
+                      (doc_id, old_d["version"], body.get("change_summary",""),
+                       old_d.get("content",""), old_d.get("status",""), actor, now))
+        c.execute("""UPDATE ea_documents SET doc_type=?,title=?,version=?,status=?,domain=?,category=?,
+                     scope=?,summary=?,content=?,confidentiality=?,owner=?,approved_by=?,
+                     effective_date=?,review_date=?,expiry_date=?,tags=?,updated_at=?
+                     WHERE id=?""",
+                  (body.get("doc_type", old_d["doc_type"]), body.get("title", old_d["title"]),
+                   body.get("version", old_d["version"]), body.get("status", old_d["status"]),
+                   body.get("domain", old_d["domain"]), body.get("category", old_d["category"]),
+                   body.get("scope", old_d.get("scope","")), body.get("summary", old_d.get("summary","")),
+                   body.get("content", old_d.get("content","")),
+                   body.get("confidentiality", old_d.get("confidentiality","Internal")),
+                   body.get("owner", old_d.get("owner","")), body.get("approved_by", old_d.get("approved_by","")),
+                   body.get("effective_date", old_d.get("effective_date","")),
+                   body.get("review_date", old_d.get("review_date","")),
+                   body.get("expiry_date", old_d.get("expiry_date","")),
+                   body.get("tags", old_d.get("tags","[]")), now, doc_id))
+        _repo_log(c, actor, "UPDATE_DOCUMENT", "Document", doc_id, body.get("title",""))
+        c.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/repo/documents/{doc_id}", status_code=204)
+def repo_delete_document(doc_id: str, current_user: dict = Depends(_require_auth)):
+    _require_role(current_user, ["admin"])
+    actor = current_user.get("sub", current_user.get("username", ""))
+    with get_ea_domains_db() as c:
+        if not c.execute("SELECT 1 FROM ea_documents WHERE id=?", (doc_id,)).fetchone():
+            raise HTTPException(404)
+        c.execute("DELETE FROM ea_doc_versions WHERE doc_id=?", (doc_id,))
+        c.execute("DELETE FROM ea_doc_sections WHERE doc_id=?", (doc_id,))
+        c.execute("DELETE FROM ea_documents WHERE id=?", (doc_id,))
+        c.execute("DELETE FROM repo_links WHERE (src_type='Document' AND src_id=?) OR (dst_type='Document' AND dst_id=?)", (doc_id, doc_id))
+        _repo_log(c, actor, "DELETE_DOCUMENT", "Document", doc_id, "")
+        c.commit()
+
+
+# ── END EA REPOSITORY ─────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPLOYMENT TOPOLOGY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_NODE_TYPES = ["Server","Database","Cache","LoadBalancer","Container","K8sCluster",
+               "Queue","CDN","Gateway","CloudZone","Firewall","Storage","ExternalAPI"]
+_EDGE_TYPES = ["hosts","uses","connects-to","calls","replicates-to",
+               "load-balances","caches","routes-to","backs-up-to","deploys-on"]
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+def _deploy_row_to_node(r) -> dict:
+    d = dict(r)
+    try: d["tags"] = json.loads(d.get("tags") or "[]")
+    except: d["tags"] = []
+    return d
+
+def _build_topology(conn, env_filter=None, app_filter=None):
+    """Build full graph dict {nodes:[...], edges:[...], apps:[...]}"""
+    # apps (as pseudo-nodes)
+    apps_q = "SELECT id,name,domain,status FROM applications WHERE decommissioned=0"
+    apps = [dict(r) for r in conn.execute(apps_q).fetchall()]
+
+    # deploy_nodes
+    qn = "SELECT * FROM deploy_nodes WHERE 1=1"
+    params = []
+    if env_filter:
+        qn += " AND environment=?"
+        params.append(env_filter)
+    nodes = [_deploy_row_to_node(r) for r in conn.execute(qn, params).fetchall()]
+
+    # deploy_edges
+    qe = "SELECT * FROM deploy_edges WHERE 1=1"
+    ep = []
+    if env_filter:
+        qe += " AND environment=?"
+        ep.append(env_filter)
+    if app_filter:
+        qe += " AND (src_id=? OR tgt_id=?)"
+        ep += [app_filter, app_filter]
+    edges = [dict(r) for r in conn.execute(qe, ep).fetchall()]
+
+    # filter nodes to only those referenced by edges (if app_filter)
+    if app_filter:
+        ref_ids = set()
+        for e in edges:
+            ref_ids.add(e["src_id"]); ref_ids.add(e["tgt_id"])
+        nodes = [n for n in nodes if n["id"] in ref_ids]
+        apps  = [a for a in apps  if a["id"] in ref_ids]
+
+    return {"nodes": nodes, "edges": edges, "apps": apps}
+
+
+# ── GET /api/deploy/topology — full org topology ────────────────────────────
+@app.get("/api/deploy/topology")
+def api_deploy_topology(environment: str = "", _u=Depends(_require_auth)):
+    with get_db() as conn:
+        return _build_topology(conn, env_filter=environment or None)
+
+
+# ── GET /api/deploy/topology/app/{app_id} ───────────────────────────────────
+@app.get("/api/deploy/topology/app/{app_id}")
+def api_deploy_topology_app(app_id: str, _u=Depends(_require_auth)):
+    with get_db() as conn:
+        return _build_topology(conn, app_filter=app_id)
+
+
+# ── GET /api/deploy/nodes ───────────────────────────────────────────────────
+@app.get("/api/deploy/nodes")
+def api_deploy_nodes_list(
+    node_type: str = "", environment: str = "", provider: str = "",
+    status: str = "", q: str = "",
+    page: int = 1, limit: int = 50,
+    _u=Depends(_require_auth)
+):
+    with get_db() as conn:
+        sql = "SELECT * FROM deploy_nodes WHERE 1=1"
+        p = []
+        if node_type:    sql += " AND node_type=?";    p.append(node_type)
+        if environment:  sql += " AND environment=?";  p.append(environment)
+        if provider:     sql += " AND provider=?";     p.append(provider)
+        if status:       sql += " AND status=?";       p.append(status)
+        if q:            sql += " AND (name LIKE ? OR hostname LIKE ? OR notes LIKE ?)"; p += [f"%{q}%"]*3
+        total = conn.execute(f"SELECT COUNT(*) FROM ({sql})", p).fetchone()[0]
+        rows  = conn.execute(sql + " ORDER BY node_type,name LIMIT ? OFFSET ?",
+                             p + [limit, (page-1)*limit]).fetchall()
+        return {"total": total, "page": page, "limit": limit,
+                "items": [_deploy_row_to_node(r) for r in rows]}
+
+
+# ── POST /api/deploy/nodes ──────────────────────────────────────────────────
+@app.post("/api/deploy/nodes")
+def api_deploy_nodes_create(body: dict, _u=Depends(_require_writer)):
+    nid = "DN-" + str(uuid.uuid4())[:8].upper()
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO deploy_nodes
+            (id,name,node_type,environment,provider,region,hostname,ip_address,
+             os,spec,version,status,notes,tags,x,y,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (nid,
+              body.get("name","New Node"), body.get("node_type","Server"),
+              body.get("environment","Production"), body.get("provider",""),
+              body.get("region",""),    body.get("hostname",""),
+              body.get("ip_address",""), body.get("os",""), body.get("spec",""),
+              body.get("version",""), body.get("status","Active"),
+              body.get("notes",""), json.dumps(body.get("tags",[])),
+              body.get("x",0), body.get("y",0), now, now))
+        conn.commit()
+    return {"id": nid}
+
+
+# ── PUT /api/deploy/nodes/{node_id} ─────────────────────────────────────────
+@app.put("/api/deploy/nodes/{node_id}")
+def api_deploy_nodes_update(node_id: str, body: dict, _u=Depends(_require_writer)):
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE deploy_nodes SET
+              name=?,node_type=?,environment=?,provider=?,region=?,hostname=?,
+              ip_address=?,os=?,spec=?,version=?,status=?,notes=?,tags=?,x=?,y=?,updated_at=?
+            WHERE id=?
+        """, (body.get("name"), body.get("node_type","Server"),
+              body.get("environment","Production"), body.get("provider",""),
+              body.get("region",""), body.get("hostname",""),
+              body.get("ip_address",""), body.get("os",""), body.get("spec",""),
+              body.get("version",""), body.get("status","Active"),
+              body.get("notes",""), json.dumps(body.get("tags",[])),
+              body.get("x",0), body.get("y",0), now, node_id))
+        conn.commit()
+    return {"ok": True}
+
+
+# ── DELETE /api/deploy/nodes/{node_id} ──────────────────────────────────────
+@app.delete("/api/deploy/nodes/{node_id}")
+def api_deploy_nodes_delete(node_id: str, _u=Depends(_require_writer)):
+    with get_db() as conn:
+        conn.execute("DELETE FROM deploy_edges WHERE src_id=? OR tgt_id=?", (node_id, node_id))
+        conn.execute("DELETE FROM deploy_nodes WHERE id=?", (node_id,))
+        conn.commit()
+    return {"ok": True}
+
+
+# ── GET /api/deploy/edges ───────────────────────────────────────────────────
+@app.get("/api/deploy/edges")
+def api_deploy_edges_list(src_id: str = "", tgt_id: str = "", environment: str = "",
+                          _u=Depends(_require_auth)):
+    with get_db() as conn:
+        sql = "SELECT * FROM deploy_edges WHERE 1=1"
+        p = []
+        if src_id:      sql += " AND src_id=?";      p.append(src_id)
+        if tgt_id:      sql += " AND tgt_id=?";      p.append(tgt_id)
+        if environment: sql += " AND environment=?"; p.append(environment)
+        rows = conn.execute(sql + " ORDER BY created_at", p).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ── POST /api/deploy/edges ──────────────────────────────────────────────────
+@app.post("/api/deploy/edges")
+def api_deploy_edges_create(body: dict, _u=Depends(_require_writer)):
+    eid = "DE-" + str(uuid.uuid4())[:8].upper()
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO deploy_edges
+            (id,src_type,src_id,tgt_type,tgt_id,edge_type,protocol,port,environment,label,notes,created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (eid,
+              body.get("src_type","Application"), body.get("src_id",""),
+              body.get("tgt_type","DeployNode"),  body.get("tgt_id",""),
+              body.get("edge_type","connects-to"), body.get("protocol",""),
+              body.get("port",""), body.get("environment","Production"),
+              body.get("label",""), body.get("notes",""), now))
+        conn.commit()
+    return {"id": eid}
+
+
+# ── DELETE /api/deploy/edges/{edge_id} ──────────────────────────────────────
+@app.delete("/api/deploy/edges/{edge_id}")
+def api_deploy_edges_delete(edge_id: str, _u=Depends(_require_writer)):
+    with get_db() as conn:
+        conn.execute("DELETE FROM deploy_edges WHERE id=?", (edge_id,))
+        conn.commit()
+    return {"ok": True}
+
+# ── END DEPLOYMENT TOPOLOGY ──────────────────────────────────────────────────
+
 if os.path.isdir(STATIC_DIR):
     app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 
@@ -6002,8 +7553,13 @@ def catch_all(full_path: str = ""):
         raise HTTPException(404)
     if full_path.startswith("api/"): raise HTTPException(404)
     idx = os.path.join(STATIC_DIR, "index.html")
-    return FileResponse(idx) if os.path.exists(idx) else JSONResponse(
-        {"service": f"MPX AppPort EA Portfolio {APP_VERSION}", "docs": "/docs"})
+    if os.path.exists(idx):
+        return FileResponse(idx, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma":        "no-cache",
+            "Expires":       "0",
+        })
+    return JSONResponse({"service": f"MPX AppPort EA Portfolio {APP_VERSION}", "docs": "/docs"})
 
 # ─── SEED DATA ─────────────────────────────────────────────────────────────────
 def _assign_biz_owner(apps: list) -> list:
