@@ -1,0 +1,539 @@
+================================================================================
+  MPX AppPort EA Portfolio
+  Release Notes
+================================================================================
+
+VERSION : 2.1 B32.65
+DATE    : 2026-03-26
+STATUS  : Stable
+
+CHANGES :
+  [FIX] Sortable Headers — เพิ่ม sort ที่ขาดไปอีก 2 ตาราง
+    - tbl-assessment (Assessment Register): sort by Name, Domain, Criticality,
+      Assessment Status, Last Assessed, Wave, Approach
+    - tbl-ppm-appmap (App Impact Map): sort by App ID, Name, Domain,
+      Criticality, Project Count, Wave
+  ── รวมตารางที่รองรับ sort ทั้งหมด 17 ตาราง ──
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.1 B32.64
+DATE    : 2026-03-26
+STATUS  : Stable
+
+CHANGES :
+  [NEW] Sortable Column Headers — ทั่วทั้ง App (Method A)
+    - Global utility: _sortTh(), _sortBy(), _sortApply(), _sortRenderFns
+    - คลิก header: ↕ neutral → ↑ asc → ↓ desc → reset (3-state toggle)
+    - Sort icon สีเปลี่ยน: neutral=dim, active=accent
+    - ตารางที่รองรับ (7 ตาราง):
+      · App Inventory — ID, Name, Domain, Vendor, Type, Status, Criticality, Health, TCO, Owner
+      · ARB Requests — Code, Title, Type, Level, Status, Created
+      · EA List — App ID, ชื่อ, Domain, EA Group, EA Category, Status, Health, BCG
+      · PPM Projects — ID, Name, Type, Status, Priority, Health, %Done, PM, Planned End
+      · Tech Catalog — Name, Vendor, Category, Tier, Status, Latest Ver.
+      · Vendor Registry — Vendor, Type, Tier, Engagements, Avg Score, Framework End, Risk
+      · Compliance/Standards — Code, Title, Category, Status, Owner, Ver
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.1 B32.63
+DATE    : 2026-03-26
+STATUS  : Stable
+
+CHANGES :
+  [NEW] Deployment Map — Interface Summary Tab
+    - เพิ่ม tab [🗺️ Map] / [🔌 Interfaces] ใน toolbar
+    - Interface Summary: group connections ตาม protocol:port + edge_type
+    - Mini bar chart แสดง distribution, sort by count
+    - Drill-down: expand group → รายการ src → tgt ทีละเส้น
+    - Action buttons: 🗺️ Highlight on Map, 🔬 App Insight
+    - Connection Detail card: แสดง metadata ครบ (protocol/port/env/label/notes)
+    - Search/filter กรอง protocol หรือ port ได้ทันที
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.1 B32.62
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [RELEASE] Version Major bump: V2.0 → V2.1
+    - เปลี่ยน version label ทุกตำแหน่งจาก V2.0 เป็น V2.1
+    - Build running number ยังคงต่อเนื่อง B32.60 → B32.61
+    - ไม่มีการเปลี่ยนแปลง feature หรือ DB schema
+
+  [BUILD] Version bump B32.55 → B32.56
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.55
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [UI] Sidebar — Application Architecture เรียงเมนูใหม่
+    - App Arch Overview → App Stack View → Deployment Map →
+      App Capability Catalog → Application Catalog → Capability Coverage → App Gap
+  [UI] ซ่อน Deployment Diagram ออกจาก sidebar และ MENU_PERMISSIONS ทุก role
+    - view ยังคงอยู่ใน code แต่ไม่สามารถเข้าถึงได้จาก UI
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.54
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [DATA] seed_deploy_v2.py — Extended Deployment Topology (86 nodes, 197 edges, 27 apps)
+    Nodes added (53 new):
+      CloudZone x5  : AWS, Azure, GCP, SaaS, IBM (5 providers)
+      Server    x11 : IBM i AS/400, Mainframe z/OS, SAP App Server,
+                      Windows Server, Splunk, HashiCorp Vault, LDAP/AD
+      Database  x13 : SAP HANA, Snowflake, CosmosDB, TimescaleDB,
+                      Elasticsearch, DB2/400, Oracle, Azure SQL, MSSQL x2
+      ExternalAPI x10: Salesforce, Workday, Okta, ServiceNow, Azure AD,
+                       Bank of Thailand, SET, KBank Open Banking, NDID, PromptPay
+      K8sCluster x3 : AKS Prod/UAT, GKE Analytics
+      Queue x3      : Azure Service Bus, Kafka IoT, GCP Pub/Sub
+      Storage x3    : Azure Blob, GCS, NFS Share
+      Cache  x1     : Azure Redis
+      Container x1  : GCP Cloud Run
+      Gateway x2    : Azure APIM, SAP Web Dispatcher
+      LoadBalancer x1: Azure Application Gateway (WAF)
+
+    Apps covered (27 total, +20 new):
+      Finance   : SAP S/4HANA, Core Banking AS/400, Risk Mgmt, Treasury, SWIFT Gateway
+      CRM       : Salesforce CRM
+      HR        : HR WorkDay
+      Analytics : AI Analytics Hub, Data Warehouse v2, ML Feature Store
+      Infra     : K8s Platform, ServiceMesh Istio
+      Security  : Identity Platform, Cyber SIEM, Fraud Detection AI, PingFederate IAM
+      Ops       : Batch Processing v2, IoT Data Platform
+      Digital   : Gen-AI Copilot
+      Customer  : Customer Portal, e-Commerce Platform
+      SCM       : Supply Chain SAP
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.53
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [BUILD] Version bump B32.52 → B32.53
+  [STABLE] App Stack View, Deployment Diagram, Deployment Map ครบทั้ง 3 แนวทาง
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.52
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [NEW FEATURE] App Stack View (Approach A) — เมนูใหม่ใน Application Architecture
+    - SVG-based Layer Diagram แสดง Infrastructure Stack แบบ Layer-by-Layer
+    - ไม่ต้องพึ่ง external library — pure HTML/CSS
+    - 8 Layers: Cloud/DC → Firewall → CDN/Gateway → LB → App Server → Cache/Queue → DB/Storage → External API
+    - เลือก App จาก dropdown + filter by Environment
+    - แสดง node spec, provider, connection type ใน card style
+    - Connection summary ด้านล่าง
+
+  [NEW FEATURE] Deployment Diagram (Approach B) — เมนูใหม่ใน Application Architecture
+    - Mermaid.js auto-generate diagram จาก Topology Data
+    - เลือก App เดี่ยว หรือ All Applications
+    - Layout: Top-Down / Left-Right / Bottom-Top
+    - Node shapes ตาม type: Database=cylinder, CloudZone=circle, ExternalAPI=asymmetric
+    - Style classes: appNode (blue), dbNode (purple), cloudNode (cyan), extNode (gray)
+    - Code panel แสดง Mermaid syntax + Copy button
+    - Link ไป mermaid.live สำหรับ export/share
+
+  [FIX] Deployment Map (Approach C) — แก้ vis-network ไม่แสดงผล
+    - แก้ CSS variables (var(--text)) → hex colors จริง
+    - แก้ canvas height 0px → explicit height + window.innerHeight calculation
+    - เปลี่ยน physics engine เป็น barnesHut + auto-fit หลัง stabilize
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.51
+
+CHANGES :
+  [NEW FEATURE] Deployment Topology Map
+    - Interactive vis-network diagram แสดง App → Server → DB → Cloud
+    - Node types: Server, Database, Cache, LoadBalancer, Container, K8sCluster,
+      Queue, CDN, Gateway, CloudZone, Firewall, Storage, ExternalAPI (13 types)
+    - Layout: Hierarchical (Top-Down) / Force-directed / Fit-to-screen
+    - Filter by Environment: Production / UAT / Staging / Development
+    - Add / Edit / Delete Node via modal form
+    - Add / Delete Connection (Edge) พร้อม edge_type, protocol, port
+    - Detail panel ขวา: คลิก Node หรือ Edge เพื่อดูข้อมูล
+  [NEW FEATURE] App Detail — Deployment mini-map
+    - Topology diagram ขนาดเล็กใน insight card ของแต่ละ App
+    - แสดง connected nodes อัตโนมัติจาก deploy_edges
+    - ปุ่ม "Open Full Map" link ไปยัง Deployment Map view
+  [DATA] seed_deploy.py — 33 infra nodes + 42 connections
+    - ครอบคลุม 7 Apps หลัก: CBS, Internet Banking, Mobile, CRM,
+      Data Platform, HR, Treasury
+    - CloudZone: AWS ap-southeast-1 + On-Premise DC
+  [UI] Sidebar Architecture — เรียงเมนูใหม่
+    - MPX EA Blueprint → EA Landscape → Tech Debt → Capability Map → Compliance
+  [NEW] DB Tables: deploy_nodes, deploy_edges (in appport.db)
+  [NEW] API: /api/deploy/topology, /api/deploy/nodes, /api/deploy/edges
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.50
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [IMPROVEMENT] Document Library — แก้ Layout ล้น screen
+    - เปลี่ยนเป็น full-height layout (calc(100vh - 54px)) Left/Right scroll แยกกัน
+    - Detail panel ขวา scroll ได้อิสระ ไม่ตัดเนื้อหา ไม่ล้น viewport
+    - Highlight card ที่เลือกด้วย outline สีฟ้า
+    - Detail header แสดง meta info ครบใน card style
+  [IMPROVEMENT] Document Library — Grouping เอกสารตาม Type
+    - จัดหมวดหมู่: Policy → Procedure → Guideline → ADD → ADR → Template → Runbook
+    - แต่ละ group มี header แสดง icon, ชื่อ type, จำนวนเอกสาร
+    - สีของ group header ตรงกับ doc_type color
+  [FIX] Browser cache — เพิ่ม no-cache headers บน index.html response
+    - Cache-Control: no-cache, no-store, must-revalidate
+    - ป้องกัน browser ใช้ index.html เวอร์ชันเก่า
+  [FIX] EA Repository menu visibility — เพิ่ม repo-documents ใน MENU_PERMISSIONS
+  [FIX] users.config.json — เพิ่ม EA Repository access ให้ทุก user (14 accounts)
+  [UI] Sidebar Architecture — เรียงเมนูใหม่
+    - MPX EA Blueprint → EA Landscape → Tech Debt → Capability Map → Compliance
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.49
+DATE    : 2026-03-22
+STATUS  : Stable
+
+CHANGES :
+  [FEATURE] EA Document Library — ระบบจัดการเอกสาร EA แบบครบวงจร
+    - เพิ่ม 3 ตารางใหม่ใน ea_domains.db: ea_documents, ea_doc_versions, ea_doc_sections
+    - รองรับ 7 ประเภทเอกสาร: Policy / Procedure / Guideline / ADD / ADR / Template / Runbook
+    - Document Code Convention: EA-POL-{DOMAIN}-{seq}, APP-XXX-ADD-v1, EA-ADR-{DOMAIN}-{seq}
+    - Markdown editor พร้อม toolbar (B/I/Code/H1-H3/List/HR) + Load Template
+    - Markdown renderer client-side (regex-based) แสดงผลใน Detail panel
+    - Version history — บันทึก snapshot เมื่อ save version พร้อม change note
+    - Link เอกสารกับ Application, Architecture Standard ผ่าน repo_links
+  [FEATURE] App Detail — Architecture Documents section
+    - แสดง EA Documents ที่ linked กับ Application ใน App Detail panel
+    - คลิกเพื่อเปิด Detail ของเอกสารได้โดยตรง
+  [FEATURE] EA Repository — Documents ใน EA Repository Home
+    - Document count แสดงใน KPI cards และ Quick Links
+    - Documents ถูกนับรวมใน recent activity feed
+  [DATA] Seed 22 เอกสารตัวอย่าง + 21 links
+    - 5 Policy, 3 Procedure, 3 Guideline, 5 ADD, 4 ADR, 2 Template
+    - repo_links: Document→Application (7), Document→ArchitectureStandard (14)
+  [UPDATE] DB Schema — อัปเดต ea_domains.db จาก 21 → 24 tables
+  [UPDATE] Sidebar → "Architecture → Compliance" (เปลี่ยนจาก Standards)
+  [UPDATE] User Management — Menu Access count อัปเดตรองรับ menu ใหม่ทั้งหมด
+  [UPDATE] MPX Meta Data — อัปเดต Architecture Standards 150 รายการ (9 categories)
+  [UPDATE] DB Schema metadata — ครบทุกตารางตามสถานะปัจจุบันของ app
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.48
+DATE    : 2026-03-20
+STATUS  : Stable
+
+CHANGES :
+  [BUG FIX] Tech Catalog — Detail panel background ใส มองไม่เห็นเนื้อหา
+    - เปลี่ยน background:var(--surface) → var(--card) ซึ่ง define ครบทั้ง dark/light theme
+    - เพิ่ม border-left:1px solid var(--border) ให้ panel แยกจาก content ชัดขึ้น
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.45
+DATE    : 2026-03-20
+STATUS  : Stable
+
+CHANGES :
+  [BUG FIX] Tech Catalog — แก้ modal background click-through bug
+    - เพิ่ม e.stopPropagation() ใน showModal backdrop click handler
+    - เพิ่ม guard ใน _tcCloseDetail ป้องกัน detail panel ปิดเมื่อ modal ยังเปิดอยู่
+  [IMPROVEMENT] Tech Catalog — auto-seed 99 tech entries พร้อม versions, CVEs, Radar ตอน server start ครั้งแรก
+  [FIX] System Config — Version แสดงค่าจาก mpx-studio.config.json แทน hardcode
+  [FIX] Token expiry ปรับเป็น 4 ชั่วโมง (240 นาที)
+
+--------------------------------------------------------------------------------
+
+VERSION : 2.0 B32.44
+DATE    : 2026-03-17
+STATUS  : Stable
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.44)
+--------------------------------------------------------------------------------
+
+[FIX] Role-based Access Control — ARB Write Endpoints
+  - แก้ช่องโหว่ที่ viewer role สามารถเรียก write API ได้
+  - ARB write endpoints (create, update, submit, add comment/finding/action)
+    เปลี่ยนจาก _require_auth → _require_writer (ต้องการ role editor หรือ admin)
+  - Read endpoints (list, dashboard, export) คงสิทธิ์ viewer อ่านได้ปกติ
+
+[FIX] System Config — Version Display
+  - Version card ใน System Config อ่านค่าจาก /api/version แทน hardcode "1.0.0"
+
+[FIX] Token Expiry
+  - ปรับ token_expire_minutes จาก 1440 (24h) → 240 (4h)
+
+[FEATURE] User Management — Menu Access Chips ครบ 16 รายการ
+  - เพิ่ม chips: ARB, Business Arch, Data Arch, App Arch, Tech Arch, Security Arch
+  - Admin สามารถเลือก/ยกเลิก menu access ของแต่ละ user ได้ครบทุก section
+
+[FEATURE] Railway Deployment Support
+  - เพิ่ม /health endpoint (no auth) สำหรับ Railway healthcheck
+  - railway.json: healthcheckPath → /health, timeout 60s
+
+================================================================================
+
+VERSION : 2.0 B32.43
+DATE    : 2026-03-17
+STATUS  : Stable
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.43)
+--------------------------------------------------------------------------------
+
+[FEATURE] Tech Stack Catalog — ETA Section Expansion
+
+  Backend — 6 ตาราง + 20 API Endpoints:
+  - tech_catalog         : แกนหลัก Technology (name, vendor, category, tier, standard_status)
+  - tech_versions        : Version tracking (major.minor.patch, release_type, EOL, lifecycle_phase)
+  - tech_servers         : Server & Infrastructure inventory (hostname, OS, type, environment)
+  - tech_usage           : Usage linking — App + Server (installed_version, upgrade_plan)
+  - tech_vulnerabilities : CVE records (cve_id, cvss_score, severity, status, remediation)
+  - tech_radar           : Technology Radar history per quarter (ring, quadrant, rationale)
+
+  Business Rules:
+  - Tech Tier:   Tier 1 (Strategic) → Tier 2 (Approved) → Tier 3 (Tolerated) → Tier 4 (Retire)
+  - Tech Status: Approved | Restricted | Deprecated | Banned
+  - Version Lifecycle: Active | Maintenance-only | EOL | Extended-support
+  - Radar Rings: Adopt | Trial | Assess | Hold | Retire
+  - Radar Quadrants: Languages & Frameworks | Platforms & OS | Tools & Build | Infrastructure & Cloud
+
+  NVD CVE Auto-fetch:
+  - ดึงข้อมูล CVE จาก NVD API 2.0 (nvd.nist.gov/rest/json/cves/2.0)
+  - Background thread รัน auto-refresh ทุก 24 ชั่วโมง
+  - Manual trigger: POST /api/tech/catalog/{id}/fetch-cve
+  - Upsert by cve_id (ไม่ duplicate), support CVSS v3.1/v3.0/v2.0
+
+  API Endpoints (20):
+    GET    /api/tech/catalog                          List tech catalog (filter: category, tier, status, q)
+    POST   /api/tech/catalog                          Create tech entry
+    GET    /api/tech/catalog/{id}                     Get detail + versions + usage + CVEs + radar
+    PUT    /api/tech/catalog/{id}                     Update tech
+    DELETE /api/tech/catalog/{id}                     Delete tech (cascade)
+    GET    /api/tech/catalog/{id}/versions            List versions
+    POST   /api/tech/catalog/{id}/versions            Add version
+    PUT    /api/tech/versions/{id}                    Update version
+    DELETE /api/tech/versions/{id}                    Delete version
+    GET    /api/tech/servers                          List servers (filter: env, status, q)
+    POST   /api/tech/servers                          Create server
+    PUT    /api/tech/servers/{id}                     Update server
+    GET    /api/tech/usage                            List usage (filter: tech_id, app_id, server_id)
+    POST   /api/tech/usage                            Add usage record (App or Server)
+    PUT    /api/tech/usage/{id}                       Update usage
+    DELETE /api/tech/usage/{id}                       Delete usage
+    GET    /api/tech/vulnerabilities                  List CVEs (filter: tech_id, severity, status)
+    POST   /api/tech/catalog/{id}/fetch-cve           Trigger NVD fetch (background)
+    PUT    /api/tech/vulnerabilities/{id}             Update CVE status/remediation
+    GET    /api/tech/radar                            Radar entries (filter: quarter, ring, quadrant)
+    POST   /api/tech/radar                            Add radar entry
+    GET    /api/tech/dashboard                        KPIs + by_category + by_tier + CVE breakdown
+
+  Frontend — 4 Views ใน ETA section:
+  - 📦 Tech Catalog: Table + right slide-over panel พร้อม 4 tabs (Versions, Usage, CVEs, Radar)
+    Create/Edit modal, Add Version modal, Add Usage modal (App/Server), Fetch NVD button
+  - 🎯 Tech Radar: Full SVG Radar chart 800×800px, 4 rings × 4 quadrants, blips interactive
+    Hover tooltip แสดง ring/quadrant/version/usage count, Quarter filter, Blip list table
+  - 🛡️ Vulnerabilities: KPI cards (Critical/High/Medium/Low/Total), CVE table + status filter,
+    Update CVE status modal, "Fetch All CVEs" bulk button
+  - 🖥️ Server Inventory: Server table + filter by env/status, Add/Edit server modal
+
+  Sidebar (techarch group) — ลำดับใหม่:
+  - Tech Overview, Tech Catalog, Tech Radar, Vulnerabilities, Server Inventory,
+    Tech Standard Catalog, Tech Product Catalog, App Tech Map, Tech Gap
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.42)
+--------------------------------------------------------------------------------
+
+[FEATURE] ARB Lite — Architecture Review Board Module (New Sidebar Section)
+
+  Backend — 9 ตาราง + 24 API Endpoints:
+  - arb_requests          : ARB Review Request หลัก (code, type, status, review_level)
+  - arb_request_applications: linked applications ต่อ request
+  - arb_impact_profile    : Impact flags 13 ด้าน (Business/Data/App/Tech/Security/
+                            Integration/Compliance + has_pii, internet_facing,
+                            new_integration, new_vendor, new_technology, expected_exception)
+  - arb_reviewers         : Reviewer assignment per request
+  - arb_comments          : Review comments (domain, severity, type)
+  - arb_findings          : Formal findings (severity: Low/Medium/High/Critical)
+  - arb_decisions         : ARB Decision record (Approve/Conditionally/Rework/Reject)
+  - arb_actions           : Follow-up action items + tracking
+  - arb_recommendations   : Auto-generated artifact/ESA ABB-SBB recommendations
+
+  Business Rules:
+  - Auto Review Level Classification:
+      * Auto-pass  → ทุก impact = None + ไม่มี flag ใดเป็น True
+      * Desk Review → impact ≤ Medium + flag ≤ 2 ตัว
+      * Formal Review → มี High/Critical impact หรือ flag ≥ 3 ตัว
+  - Auto Recommendation Engine:
+      * data_impact → แนะนำ Data Flow Diagram + Data Dictionary
+      * security_impact / has_pii → แนะนำ Security Assessment + ESA ABB/SBB
+      * integration_impact → แนะนำ Interface Specification
+      * new_technology → แนะนำ Technology Assessment
+      * internet_facing → แนะนำ Internet Risk Assessment
+      * expected_exception → แนะนำ Exception Approval Form
+
+  API Endpoints (24):
+    POST   /api/arb/requests                          Create new ARB request
+    GET    /api/arb/requests                          List requests (filter/search)
+    GET    /api/arb/requests/{id}                     Get request detail
+    PUT    /api/arb/requests/{id}                     Update request
+    POST   /api/arb/requests/{id}/submit              Submit for review
+    POST   /api/arb/requests/{id}/status              Change status
+    DELETE /api/arb/requests/{id}                     Delete request
+    POST   /api/arb/requests/{id}/reviewers           Assign reviewer
+    DELETE /api/arb/requests/{id}/reviewers/{rid}     Remove reviewer
+    POST   /api/arb/requests/{id}/comments            Add comment
+    POST   /api/arb/requests/{id}/findings            Add finding
+    PUT    /api/arb/findings/{id}                     Update finding
+    POST   /api/arb/requests/{id}/decision            Issue decision
+    POST   /api/arb/requests/{id}/actions             Add action
+    PUT    /api/arb/actions/{id}                      Update action status
+    GET    /api/arb/requests/{id}/recommendations     Get recommendations
+    POST   /api/arb/requests/{id}/generate-recommendations  Regenerate
+    GET    /api/arb/dashboard                         Dashboard KPIs + stats
+    GET    /api/arb/requests/export/csv               Export CSV
+
+  Frontend — 2 Views + full workflow:
+  - ARB section ใน Sidebar (ต่อจาก Core Products, ก่อน Meta Data)
+  - 🏛️ ARB Dashboard: KPI cards (total/open/decision), by-status/level/decision
+    charts, overdue action count, recent requests table
+  - 📋 ARB Requests: Request list พร้อม search + filter (status/level),
+    Detail slide-over panel แสดง: header, impact profile, reviewers,
+    recommendations, findings, actions, comments, decision
+  - Create Request Modal: title, type, owner, target date, objective, summary,
+    impact matrix (6 dropdowns + 6 checkbox flags)
+  - Add Finding Modal: domain, severity, description, recommended action, owner, due date
+  - Add Action Modal: description, type, owner, due date, required evidence
+  - Issue Decision Modal: decision type, summary, rationale, key risks, next steps
+  - Inline actions: Submit / Change Status / Add Comment / Close Action / Regen Recs
+
+  Permissions:
+  - menu key "arb" เพิ่มในทุก editor account ทั้ง 13 accounts (ไม่รวม viewer, vendor)
+  - menus: ['arb-dashboard','arb-requests']
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.41)
+--------------------------------------------------------------------------------
+
+[SECURITY] System Config — Re-authentication Guard
+  - ก่อนเข้าหน้า System Config ต้องยืนยันตัวตน Admin อีกครั้งทุก session
+  - ใช้ modal "ยืนยันตัวตน Admin" เหมือนกับ Meta Data section
+  - flag _sysConfigUnlocked แยกอิสระจาก _metaDataUnlocked
+    (unlock หน้าใดหน้าหนึ่งไม่กระทบกัน)
+
+[SECURITY] Built-in Accounts — Password Reset + 4 New Accounts
+  - Reset password ทุก built-in account ใหม่ทั้งหมด (ไม่ซ้ำกัน, complex ทุกตัว)
+  - เพิ่ม 4 account ใหม่ role=editor: pmo, pmo_office, arb_office, cao
+  - Hash algorithm: PBKDF2-SHA256, 310,000 iterations (OWASP recommended 2026)
+  - Total built-in accounts: 16
+
+  BUILT-IN ACCOUNTS (B32.41):
+  ─────────────────────────────────────────────────────────────────────
+  USERNAME      PASSWORD              ROLE     MENUS
+  ─────────────────────────────────────────────────────────────────────
+  admin         Adm!nC0r3#2026Xq     admin    * (all)
+  ea_editor     EaEd!t0r@Mpx7Tz      editor   full editor menus
+  ea_viewer     V!ewR3ad$Only9Pk     viewer   dashboard,inventory,arch,vendor
+  vendor_mgr    Vnd$Mgr!2026Wr4K     vendor   dashboard,vendor
+  incognito     1nc0gn!t0@Bx3Lm     editor   full editor menus
+  ea_office     EaOff!c3#Hq5Nz2     editor   full editor menus
+  esa           Es@S3cur!ty7Jw8     editor   dashboard,inventory,arch,security
+  pea           P3a$Arch!t3ct2Kd    editor   full editor menus
+  eba           Eb@Bus!n3ss9Fx1     editor   dashboard,inventory,arch,business
+  eda           Ed@D4t4$Arch5Vp     editor   dashboard,inventory,arch,data
+  eaa           Ea@App!Arch6Rw3     editor   dashboard,inventory,arch,apparch
+  eta           Et@T3ch$Std8Ym4     editor   dashboard,inventory,arch,techarch
+  pmo           Pm0!Off!c3@Rk7Qx    editor   full editor menus   [NEW]
+  pmo_office    PmOff@2026#Bz9Lw    editor   full editor menus   [NEW]
+  arb_office    Arb!B0ard$2026Hn    editor   full editor menus   [NEW]
+  cao           Ca0$Ch!ef@Arch3Yt   editor   full editor menus   [NEW]
+  ─────────────────────────────────────────────────────────────────────
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.40)
+--------------------------------------------------------------------------------
+
+[IMPROVE] User Pill — ย้ายเข้า Sidebar Footer
+  - ย้าย Login Information Pill เข้าไปอยู่ใน Sidebar ที่ล่างสุด ต่อจาก Settings section
+  - ใช้ position:sticky;bottom:0 ให้ chip ติดขอบล่าง Sidebar เสมอ ไม่หายเมื่อ scroll
+  - Expanded: แสดง Avatar + Display Name + Role + Sign Out button
+  - Collapsed: แสดงเฉพาะ Avatar (ซ่อน username, role, logout button อัตโนมัติ)
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.39)
+--------------------------------------------------------------------------------
+
+[IMPROVE] Sidebar — UI Cleanup
+  - ย้าย "DB Schema" เข้าอยู่ใต้ Sidebar group "Meta Data" (รวมกับ MPX Meta Data)
+  - ลบ Sidebar group "Portfolio" ออก (DB Schema ยังคงอยู่ใน Meta Data)
+  - ซ่อนแถบ "100 Applications · 10 Domains" ที่อยู่ล่างสุดของ Sidebar
+
+[IMPROVE] Topbar — User Info Pill
+  - ย้าย Login Information (Avatar + Username + Role + Sign Out) ออกจาก Topbar
+  - แสดงเป็น Fixed Pill มุมขวาบน (position:fixed top-right) แยกอิสระจาก Topbar
+  - ออกแบบใหม่เป็น Pill รูปแบบ: [Avatar] [Username / Role] [⏻ Sign Out]
+  - ซ่อน Pill ระหว่าง Print (Paper Out) อัตโนมัติ
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.37)
+--------------------------------------------------------------------------------
+
+[FEATURE] MPX Meta Data — เพิ่ม Business Process + ESA SBB
+  - เพิ่ม EBA Business Process Catalog (120 BProcess ใน 40 BCap) ระหว่าง EBA BCap และ EDA
+  - เพิ่ม ESA SBB Catalog (150 SBB ใน 50 ABB, 3 product ต่อ ABB) ไว้ล่างสุด
+  - Summary bar: 7 tabs — EBA BCap, EBA BProcess, EDA, EAA, ETA, ESA ABB, ESA SBB
+  - Grand Total: 465 รายการ (195 + 120 BProcess + 150 SBB)
+
+[FEATURE] Sidebar "Portfolio" — DB Schema Viewer
+  - เพิ่ม Sidebar group ใหม่ "Portfolio" พร้อมหน้า "DB Schema"
+  - แสดง Schema ของ 5 databases: appport.db, appport_audit.db, vendor.db, esa.db, ea_domains.db
+  - Quick-jump bar + Table สำหรับ Column / Type / Description ทุกตาราง
+
+[SECURITY] Meta Data + Portfolio — Admin-only + Re-Authentication
+  - Sidebar "Meta Data" และ "Portfolio" มองเห็นได้เฉพาะ admin (menus: ["*"])
+  - ก่อนเข้าถึงทุกครั้ง ต้องผ่าน Modal Re-Authentication ใส่ Username + Password อีกครั้ง
+  - POST /api/auth/login → verify admin role → set session flag _metaDataUnlocked
+  - Flag reset ทุกครั้งที่ refresh page (session-only)
+
+--------------------------------------------------------------------------------
+CHANGES IN THIS VERSION (B32.36)
+--------------------------------------------------------------------------------
+
+[FEATURE] Meta Data — Sidebar section ใหม่ + MPX Meta Data page
+  - เพิ่ม Sidebar group "Meta Data" อยู่ล่างสุด (ก่อน Settings)
+  - เพิ่มหน้า "MPX Meta Data" แสดง Capability Reference ครบ 5 EA Domain
+  - EBA: 40 BCap จาก 8 Domain
+  - EDA: 30 DDomain จาก 6 Domain
+  - EAA: 35 ACap จาก 7 Domain
+  - ETA: 40 TStd จาก 8 Domain
+  - ESA: 50 ABB จาก 10 Domain
+  - รวมทั้งหมด 195 รายการ
+
+--------------------------------------------------------------------------------
+DEPLOYMENT
+--------------------------------------------------------------------------------
+
+  Local:    python server.py
+  Railway:  git push  (Procfile + railway.json included)
+  Health:   GET /api/version
+
+================================================================================

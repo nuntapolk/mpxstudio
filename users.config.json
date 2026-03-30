@@ -5,7 +5,7 @@
     "admin": {
       "display_name": "System Admin",
       "email": "admin@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$/VREPiHi4yMXhBFtse1XVw====$UrbGj4FmGmzYffS2Hky5AFQRZDzawSkniJZcjTv0LKw===",
+      "password_hash": "pbkdf2_sha256$310000$2EMeUGVlG8cnq44IrR3awA==$rG6YLfn0NHr/vGYKwTFxetRFLz14eU/Mlo8hgNo6wnQ=",
       "roles": [
         "admin"
       ],
@@ -17,7 +17,7 @@
     "ea_editor": {
       "display_name": "EA Editor",
       "email": "editor@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$sfA+98sfBeKYzLzdXHLN/Q====$Hlp8mfK7bdfhQ0EGNLj+dTq7+zjWYb2zWvzGMmZpGNE===",
+      "password_hash": "pbkdf2_sha256$310000$YYq6bU/AOuFxAJfXPxfFYg==$LtD+3qXlQyMasZVk71f3k14iyXDrrYu5uRSNUjFuFv0=",
       "roles": [
         "editor"
       ],
@@ -32,7 +32,6 @@
         "vendor",
         "security",
         "audit",
-        "config",
         "business",
         "data",
         "apparch",
@@ -45,7 +44,7 @@
     "ea_viewer": {
       "display_name": "EA Viewer",
       "email": "viewer@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$jWuYuMmZ+US9VeY5XR1oSQ====$G+TVcle17aHMQIEAbfpbxZcQIW2qCUGQRLbyQ5wFEPA===",
+      "password_hash": "pbkdf2_sha256$310000$fKLA2brxe10/FR+ozFa83g==$rN26QunvWn+B6F52EemJgpGDOeL8olL45Sj6WADr54g=",
       "roles": [
         "viewer"
       ],
@@ -61,7 +60,7 @@
     "vendor_mgr": {
       "display_name": "Vendor Manager",
       "email": "vendor@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$csPXgNc0Vpii2wLsOTFaBg====$rAtyLwPK3G7Xj9XaNS7BZcYGYU5/xY+89l77TscAxyQ===",
+      "password_hash": "pbkdf2_sha256$310000$vdu+MqlvuYwywVeXo0XnuA==$AVqgJXzKIHIYX3V2dkPx7yS+lgbaY0G9R30kq9KdIq4=",
       "roles": [
         "vendor"
       ],
@@ -74,35 +73,19 @@
     "incognito": {
       "display_name": "Incognito",
       "email": "incognito@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$VbZXqm6Hnz2L0xCMwvHT5g====$s0PpPcgzKk/Vp0H773DqZGhmrL0Mkc/Z25e2n0fZuWY===",
+      "password_hash": "pbkdf2_sha256$310000$agSt+wS+YxJKRSEpAE0Rdg==$JACvlJGs647c8I/AwtAt/aLhA9GRtZ09sNM0TTCB52k=",
       "roles": [
-        "editor"
+        "admin"
       ],
       "menus": [
-        "dashboard",
-        "inventory",
-        "architecture",
-        "planning",
-        "analytics",
-        "asset",
-        "ops",
-        "vendor",
-        "security",
-        "audit",
-        "config",
-        "business",
-        "data",
-        "apparch",
-        "techarch",
-        "arb",
-        "EA Repository"
+        "*"
       ],
       "active": true
     },
     "ea_office": {
       "display_name": "EA Office",
       "email": "ea_office@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$laqUFru2juzWy1RZDaKKCg====$XwnDOYdVSI+TUzl5rpRCkJUkbLC/VgSdaKTVe+CoPUA===",
+      "password_hash": "pbkdf2_sha256$310000$qYUWxha9u8BCw/7gGyKx5Q==$st6dttvTnIENgEWmirqEf9P36JkaKQM+xjdxMpo5V+I=",
       "roles": [
         "editor"
       ],
@@ -117,7 +100,6 @@
         "vendor",
         "security",
         "audit",
-        "config",
         "business",
         "data",
         "apparch",
@@ -130,24 +112,7 @@
     "esa": {
       "display_name": "ESA",
       "email": "esa@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$2mFJRxWvUSsGUNI9I+NNWQ====$jse99RMM/jo8Hgt6aMDh52mLGwJVBT4MkcvXrqUpZxc===",
-      "roles": [
-        "editor"
-      ],
-      "menus": [
-        "dashboard",
-        "inventory",
-        "architecture",
-        "security",
-        "arb",
-        "EA Repository"
-      ],
-      "active": true
-    },
-    "pea": {
-      "display_name": "PEA",
-      "email": "pea@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$qxpGTWSS80qhiWsqJKGIMw====$EUh+doVdZfOxrBo9O/YaJvzkAQGHuCDNJGtc01iwZRU===",
+      "password_hash": "pbkdf2_sha256$310000$AVz0aEZ7bUDVlORQEthVPQ==$Z2c+hh9rbN21oTPbVB/s4PZvrgvo7KJQjx3hyJvjhRE=",
       "roles": [
         "editor"
       ],
@@ -162,7 +127,33 @@
         "vendor",
         "security",
         "audit",
-        "config",
+        "business",
+        "data",
+        "apparch",
+        "techarch",
+        "arb",
+        "EA Repository"
+      ],
+      "active": true
+    },
+    "pea": {
+      "display_name": "PEA",
+      "email": "pea@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$tzjTAPrC1FgTINKrKHsYMQ==$mdQv1dyBs2mxtSP4N/ukEdmamY81KEXdMtKaU8ZA4tE=",
+      "roles": [
+        "editor"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "asset",
+        "ops",
+        "vendor",
+        "security",
+        "audit",
         "business",
         "data",
         "apparch",
@@ -175,75 +166,7 @@
     "eba": {
       "display_name": "EBA",
       "email": "eba@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$UnEO46tzGoUXz1GZSh+Aaw====$dEe5XVUZL6Cs5GmeJkqy93exDVfnEInPlDVgC8KAQJo===",
-      "roles": [
-        "editor"
-      ],
-      "menus": [
-        "dashboard",
-        "inventory",
-        "architecture",
-        "business",
-        "arb",
-        "EA Repository"
-      ],
-      "active": true
-    },
-    "eda": {
-      "display_name": "EDA",
-      "email": "eda@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$WHd0ejS7VrpJ7NXHvM7KKg====$P0xD/fSDNPy3aZk8sEyIBp5vT7yw6yhxyjeSS8Gx7c4===",
-      "roles": [
-        "editor"
-      ],
-      "menus": [
-        "dashboard",
-        "inventory",
-        "architecture",
-        "data",
-        "arb",
-        "EA Repository"
-      ],
-      "active": true
-    },
-    "eaa": {
-      "display_name": "EAA",
-      "email": "eaa@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$C0X0vKi9BWqfUz3UGNkpOA====$o/mH4z3ee920le0oUsKc89tDyuIFwPkOiB2toJ4dYjc===",
-      "roles": [
-        "editor"
-      ],
-      "menus": [
-        "dashboard",
-        "inventory",
-        "architecture",
-        "apparch",
-        "arb",
-        "EA Repository"
-      ],
-      "active": true
-    },
-    "eta": {
-      "display_name": "ETA",
-      "email": "eta@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$4nA0N+D9gNeNYVkPnVlmEQ====$5NWmvoIHlzujcLaICBWQ+lsH5qq4lmRl34lfaHe+htw===",
-      "roles": [
-        "editor"
-      ],
-      "menus": [
-        "dashboard",
-        "inventory",
-        "architecture",
-        "techarch",
-        "arb",
-        "EA Repository"
-      ],
-      "active": true
-    },
-    "pmo": {
-      "display_name": "PMO",
-      "email": "pmo@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$BFGrsBuOImhzYZCux1sjTQ====$cFP5yeqy6dcBS8ZhZq31CmAzlh87EiNo9sPMxwWky8g===",
+      "password_hash": "pbkdf2_sha256$310000$vOQ+hV4u0+A04V2k5oL6qQ==$1LqCDVZeEQhqbBT+gN4khAEplFWQ2mAM/E/QxjCkZKc=",
       "roles": [
         "editor"
       ],
@@ -258,7 +181,114 @@
         "vendor",
         "security",
         "audit",
-        "config",
+        "business",
+        "data",
+        "apparch",
+        "techarch",
+        "arb",
+        "EA Repository"
+      ],
+      "active": true
+    },
+    "eda": {
+      "display_name": "EDA",
+      "email": "eda@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$ufVni2DvDN/NrJfd4CPWKg==$PEp+QcvT7jIs0j2dK2krPamGQO19nhGPCFLFfVcA4NM=",
+      "roles": [
+        "editor"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "asset",
+        "ops",
+        "vendor",
+        "security",
+        "audit",
+        "business",
+        "data",
+        "apparch",
+        "techarch",
+        "arb",
+        "EA Repository"
+      ],
+      "active": true
+    },
+    "eaa": {
+      "display_name": "EAA",
+      "email": "eaa@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$u0eQ8/vyHMnwSmlL3m2xyg==$Two51HG6g0xiZx77lWOb/c+V2DMFsK/nxrGq3gguClM=",
+      "roles": [
+        "editor"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "asset",
+        "ops",
+        "vendor",
+        "security",
+        "audit",
+        "business",
+        "data",
+        "apparch",
+        "techarch",
+        "arb",
+        "EA Repository"
+      ],
+      "active": true
+    },
+    "eta": {
+      "display_name": "ETA",
+      "email": "eta@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$71RuEZt+zxJufhlrOJKP1w==$yh8u7SVOt17CMo8Ugqa+cAQm0ppXVDyNSgXj8eADelw=",
+      "roles": [
+        "editor"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "asset",
+        "ops",
+        "vendor",
+        "security",
+        "audit",
+        "business",
+        "data",
+        "apparch",
+        "techarch",
+        "arb",
+        "EA Repository"
+      ],
+      "active": true
+    },
+    "pmo": {
+      "display_name": "PMO",
+      "email": "pmo@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$3JmDITMXWLoN1iUrYQ+Rtg==$RUTtcNmnln+LMi7XkwdVto3Uq777lS39QqUb4IcImTs=",
+      "roles": [
+        "editor"
+      ],
+      "menus": [
+        "dashboard",
+        "inventory",
+        "architecture",
+        "planning",
+        "analytics",
+        "asset",
+        "ops",
+        "vendor",
+        "security",
+        "audit",
         "business",
         "data",
         "apparch",
@@ -271,7 +301,7 @@
     "pmo_office": {
       "display_name": "PMO Office",
       "email": "pmo_office@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$BTtf/HpYtSfNi1gFPRk1gA====$lIc4qGvt1PeFtIAEJKnxG0hFPizNJ6ydhv7zE/qXEzk===",
+      "password_hash": "pbkdf2_sha256$310000$ooBBKZft5QUwkVeM57udaA==$QbcrUI6Mjb6NOLbMvESyTzLtfM0gRSqiubMzAzzmI1s=",
       "roles": [
         "editor"
       ],
@@ -286,7 +316,6 @@
         "vendor",
         "security",
         "audit",
-        "config",
         "business",
         "data",
         "apparch",
@@ -299,7 +328,7 @@
     "arb_office": {
       "display_name": "ARB Office",
       "email": "arb_office@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$3LkcJ/Mgyb1vW9HEjcQJ0Q====$tJ4+y5OETpXk2d2/aFV+n7GOFN/nSt3UuDqcWdDQNDc===",
+      "password_hash": "pbkdf2_sha256$310000$xF0DLiwica/y6/UUDbnh9A==$qZscWsELclbrcaIubQLkC4vQVKc7vz5ja4f0iSkPwsU=",
       "roles": [
         "editor"
       ],
@@ -314,7 +343,6 @@
         "vendor",
         "security",
         "audit",
-        "config",
         "business",
         "data",
         "apparch",
@@ -327,7 +355,7 @@
     "cao": {
       "display_name": "CAO",
       "email": "cao@mpx.co.th",
-      "password_hash": "pbkdf2_sha256$310000$8gnhgmJxN6ksNU8ZYgfcXg====$k2Q/Ox83VSmXVELdIMGsLD+f7YVwD7MXPOeyFlg1Q+Y===",
+      "password_hash": "pbkdf2_sha256$310000$nHN+U/cWjE/rY4Y84VSB+g==$TkNNs2f+FrbO2WhwyM8lLUliTnyYF7vnfT6vPmed5Hc=",
       "roles": [
         "editor"
       ],
@@ -342,13 +370,48 @@
         "vendor",
         "security",
         "audit",
-        "config",
         "business",
         "data",
         "apparch",
         "techarch",
         "arb",
         "EA Repository"
+      ],
+      "active": true
+    },
+    "tong_sq": {
+      "display_name": "Tong SQ",
+      "email": "tong_sq@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$hwNFMo96lR+lL4dis8GQ4g==$NGv7es4yiEmAvMaqFvHLjhstnzpi5xu8WXeuvMAabQ4=",
+      "roles": [
+        "admin"
+      ],
+      "menus": [
+        "*"
+      ],
+      "active": true
+    },
+    "pod_sq": {
+      "display_name": "Pod SQ",
+      "email": "pod_sq@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$4gVvrJo6OcT2heECiNQuVA==$75S9VY5yz01/aYzZ76aCCyfKVIiP81/WfeftZf3RSpE=",
+      "roles": [
+        "admin"
+      ],
+      "menus": [
+        "*"
+      ],
+      "active": true
+    },
+    "nuntapol": {
+      "display_name": "Nuntapol",
+      "email": "nuntapol@mpx.co.th",
+      "password_hash": "pbkdf2_sha256$310000$Ggh3dArFeAmH8Jk4YXYCvw==$6hKxaB1yt89lbl6bO/2Rv5Ehf8jmMUX3yVs21f3BYtc=",
+      "roles": [
+        "admin"
+      ],
+      "menus": [
+        "*"
       ],
       "active": true
     }
