@@ -651,6 +651,23 @@ CREATE TABLE IF NOT EXISTS tech_vulnerabilities (
 );
 CREATE INDEX IF NOT EXISTS idx_tvl_tech ON tech_vulnerabilities(tech_id);
 CREATE INDEX IF NOT EXISTS idx_tvl_cve  ON tech_vulnerabilities(cve_id);
+CREATE TABLE IF NOT EXISTS cve_app_map (
+    id           TEXT PRIMARY KEY,
+    cve_id       TEXT NOT NULL,
+    vuln_id      TEXT NOT NULL,
+    app_id       TEXT NOT NULL,
+    tech_id      TEXT NOT NULL,
+    tech_name    TEXT DEFAULT '',
+    match_basis  TEXT DEFAULT 'tech_usage',
+    severity     TEXT DEFAULT 'Medium',
+    status       TEXT DEFAULT 'Open',
+    note         TEXT DEFAULT '',
+    created_at   TEXT DEFAULT (datetime('now')),
+    updated_at   TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_cam_app ON cve_app_map(app_id);
+CREATE INDEX IF NOT EXISTS idx_cam_cve ON cve_app_map(cve_id);
+CREATE INDEX IF NOT EXISTS idx_cam_status ON cve_app_map(status);
 CREATE TABLE IF NOT EXISTS tech_radar (
     id         TEXT PRIMARY KEY,
     tech_id    TEXT NOT NULL REFERENCES tech_catalog(id),
@@ -4880,6 +4897,70 @@ def _fetch_nvd_cves_for_tech(tech_id: str, tech_name: str):
     except Exception as e:
         return {"error": str(e)}
 
+def _auto_match_cve_apps():
+    """Match CVEs to applications via tech_usage (exact) and stack keyword (fuzzy)."""
+    inserted = 0
+    try:
+        with get_ea_domains_db() as ea:
+            # Strategy A: exact match via tech_usage.app_id
+            rows = ea.execute("""
+                SELECT tv.id as vuln_id, tv.cve_id, tv.tech_id, tv.severity,
+                       tc.name as tech_name, tu.app_id
+                FROM tech_vulnerabilities tv
+                JOIN tech_catalog tc ON tv.tech_id = tc.id
+                JOIN tech_usage tu ON tu.tech_id = tc.id
+                WHERE tu.app_id IS NOT NULL AND tv.cve_id IS NOT NULL AND tv.cve_id != ''
+            """).fetchall()
+            for r in rows:
+                ex = ea.execute("SELECT 1 FROM cve_app_map WHERE cve_id=? AND app_id=?",
+                                (r["cve_id"], r["app_id"])).fetchone()
+                if not ex:
+                    ea.execute("""INSERT INTO cve_app_map(id,cve_id,vuln_id,app_id,tech_id,tech_name,match_basis,severity,status)
+                                  VALUES(?,?,?,?,?,?,?,?,?)""",
+                               ("CAM-"+uuid.uuid4().hex[:6].upper(), r["cve_id"], r["vuln_id"],
+                                r["app_id"], r["tech_id"], r["tech_name"], "tech_usage", r["severity"] or "Medium","Open"))
+                    inserted += 1
+            ea.commit()
+
+            # Strategy B: keyword match via applications.stack/lang/os/db_platform
+            techs = ea.execute("SELECT id, name FROM tech_catalog").fetchall()
+            vulns_by_tech = {}
+            for tv in ea.execute("SELECT id,tech_id,cve_id,severity FROM tech_vulnerabilities WHERE cve_id IS NOT NULL AND cve_id!=''").fetchall():
+                vulns_by_tech.setdefault(tv["tech_id"], []).append(tv)
+
+        with get_db() as app_db:
+            apps = app_db.execute(
+                "SELECT id,stack,lang,os,db_platform FROM applications WHERE decommissioned=0"
+            ).fetchall()
+
+        with get_ea_domains_db() as ea:
+            for app in apps:
+                fields = []
+                try:
+                    fields += json.loads(app["stack"] or "[]")
+                except Exception:
+                    pass
+                for f in [app["lang"], app["os"], app["db_platform"]]:
+                    if f: fields.append(f)
+                fields_lower = [f.lower() for f in fields if f]
+                for tech in techs:
+                    tname_lower = tech["name"].lower()
+                    if any(tname_lower in fl or fl in tname_lower for fl in fields_lower):
+                        for tv in vulns_by_tech.get(tech["id"], []):
+                            ex = ea.execute("SELECT 1 FROM cve_app_map WHERE cve_id=? AND app_id=?",
+                                            (tv["cve_id"], app["id"])).fetchone()
+                            if not ex:
+                                ea.execute("""INSERT INTO cve_app_map(id,cve_id,vuln_id,app_id,tech_id,tech_name,match_basis,severity,status)
+                                              VALUES(?,?,?,?,?,?,?,?,?)""",
+                                           ("CAM-"+uuid.uuid4().hex[:6].upper(), tv["cve_id"], tv["id"],
+                                            app["id"], tech["id"], tech["name"], "stack_keyword",
+                                            tv["severity"] or "Medium", "Open"))
+                                inserted += 1
+            ea.commit()
+    except Exception as e:
+        print(f"  [cve_app_map] match error: {e}")
+    return inserted
+
 def _nvd_daily_refresh():
     """Background thread: refresh CVEs for all tech_catalog entries every 24h."""
     time.sleep(300)  # wait 5 min after startup before first run
@@ -4890,6 +4971,7 @@ def _nvd_daily_refresh():
             for tech in techs:
                 _fetch_nvd_cves_for_tech(tech["id"], tech["name"])
                 time.sleep(6)  # 6s between requests (stay within NVD rate limit)
+            _auto_match_cve_apps()
         except Exception:
             pass
         time.sleep(86400)  # 24 hours
@@ -7349,6 +7431,72 @@ def repo_delete_document(doc_id: str, current_user: dict = Depends(_require_auth
         _repo_log(c, actor, "DELETE_DOCUMENT", "Document", doc_id, "")
         c.commit()
 
+
+# ── CVE APP MAPPING ────────────────────────────────────────────────────────────
+
+@app.get("/api/apps/{app_id}/cves")
+def api_app_cves(app_id: str, status: str = "", severity: str = "", _u=Depends(_require_auth)):
+    with get_ea_domains_db() as ea:
+        q = "SELECT cam.*,tv.description,tv.nvd_url,tv.published_date,tv.cvss_score,tv.fixed_in_version FROM cve_app_map cam LEFT JOIN tech_vulnerabilities tv ON cam.vuln_id=tv.id WHERE cam.app_id=?"
+        params = [app_id]
+        if status:
+            q += " AND cam.status=?"; params.append(status)
+        if severity:
+            q += " AND cam.severity=?"; params.append(severity)
+        q += " ORDER BY CASE cam.severity WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 WHEN 'Medium' THEN 3 WHEN 'Low' THEN 4 ELSE 5 END, tv.published_date DESC"
+        rows = [dict(r) for r in ea.execute(q, params).fetchall()]
+    counts = {}
+    for r in rows:
+        counts[r["severity"]] = counts.get(r["severity"], 0) + 1
+    return {"app_id": app_id, "total": len(rows), "counts": counts, "items": rows}
+
+@app.get("/api/security/cve-coverage")
+def api_cve_coverage(severity: str = "", status: str = "Open", _u=Depends(_require_auth)):
+    with get_ea_domains_db() as ea:
+        q = """SELECT cam.app_id,
+                      SUM(CASE WHEN cam.severity='Critical' THEN 1 ELSE 0 END) as critical,
+                      SUM(CASE WHEN cam.severity='High' THEN 1 ELSE 0 END) as high,
+                      SUM(CASE WHEN cam.severity='Medium' THEN 1 ELSE 0 END) as medium,
+                      SUM(CASE WHEN cam.severity='Low' THEN 1 ELSE 0 END) as low,
+                      COUNT(*) as total,
+                      SUM(CASE WHEN cam.status='Open' THEN 1 ELSE 0 END) as open_count
+               FROM cve_app_map cam WHERE 1=1"""
+        params = []
+        if status:
+            q += " AND cam.status=?"; params.append(status)
+        if severity:
+            q += " AND cam.severity=?"; params.append(severity)
+        q += " GROUP BY cam.app_id ORDER BY critical DESC, high DESC, total DESC"
+        rows = [dict(r) for r in ea.execute(q, params).fetchall()]
+    with get_db() as app_db:
+        app_names = {r["id"]: r["name"] for r in app_db.execute("SELECT id,name FROM applications").fetchall()}
+    for r in rows:
+        r["app_name"] = app_names.get(r["app_id"], r["app_id"])
+    return {"total_apps": len(rows), "items": rows}
+
+@app.put("/api/security/cve-app/{map_id}")
+def api_cve_app_update(map_id: str, body: dict, _u=Depends(_require_writer)):
+    allowed = {"Open","Acknowledged","Patched","Mitigated","False Positive"}
+    status = body.get("status","")
+    if status and status not in allowed:
+        raise HTTPException(400, f"status must be one of {allowed}")
+    with get_ea_domains_db() as ea:
+        if not ea.execute("SELECT 1 FROM cve_app_map WHERE id=?", (map_id,)).fetchone():
+            raise HTTPException(404)
+        fields, vals = [], []
+        if status: fields.append("status=?"); vals.append(status)
+        if "note" in body: fields.append("note=?"); vals.append(body["note"])
+        if not fields: raise HTTPException(400, "nothing to update")
+        fields.append("updated_at=?"); vals.append(datetime.utcnow().isoformat())
+        vals.append(map_id)
+        ea.execute(f"UPDATE cve_app_map SET {','.join(fields)} WHERE id=?", vals)
+        ea.commit()
+    return {"ok": True}
+
+@app.post("/api/security/cve-app/rematch")
+def api_cve_rematch(_u=Depends(_require_writer)):
+    n = _auto_match_cve_apps()
+    return {"ok": True, "inserted": n}
 
 # ── END EA REPOSITORY ─────────────────────────────────────────────────────────
 
