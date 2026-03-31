@@ -559,6 +559,14 @@ body{
   transition:all .15s;white-space:nowrap;
 }
 .aqv-insight-btn:hover{background:rgba(0,229,255,.15);border-color:var(--accent)}
+.aqv-edit-btn{
+  display:flex;align-items:center;gap:6px;padding:7px 14px;
+  border-radius:8px;border:1px solid rgba(251,191,36,.3);
+  background:rgba(251,191,36,.07);color:#fbbf24;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);
+  transition:all .15s;white-space:nowrap;
+}
+.aqv-edit-btn:hover{background:rgba(251,191,36,.15);border-color:#fbbf24}
 .aqv-close-btn{
   width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);
   background:var(--card2);color:var(--dim);cursor:pointer;
@@ -1500,7 +1508,7 @@ body{
 .sl-custom-sql{display:flex;flex-direction:column;gap:10px;margin-top:16px}
 .sl-custom-sql textarea{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:12px;resize:vertical;min-height:80px}
 </style>
-<script id="appport-config" type="application/json">{"version":"V2.1 B32.69","app_name":"MPX Studio","subtitle":"EA PORTFOLIO","organization":"MPX","description":"Enterprise Application Portfolio Management","mpx2":{"_comment":"badge positions สำหรับ MPX 2 view — l=left%, t=top%, w=block-width%, h=block-height%","badges":[{"grp":"2. Services","cat":"Customer","l":0.0,"t":0.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Partner","l":0.0,"t":20.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Service","l":0.0,"t":40.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Employee","l":0.0,"t":60.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Channel","l":3.6,"t":29.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Portal & Gateway","l":8.1,"t":24.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"BOD","l":49.0,"t":0.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Vision, Mission, Strategies","l":57.5,"t":5.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Goals, Objectives","l":58.0,"t":11.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Governance Body","l":54.5,"t":17.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Standard & Policies","l":55.5,"t":22.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Business Process & Services","l":58.5,"t":28.0,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Organization","l":47.5,"t":34.5,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Corporate & Core System","l":56.0,"t":43.5,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Back Office & Support System","l":57.0,"t":53.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Training & Communication","l":56.0,"t":63.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Corporate Information","l":54.0,"t":74.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Corporate Application & Information Technology","l":57.0,"t":83.7,"w":6.0,"h":5.0},{"grp":"","cat":"Enterprise Information Technology","l":63.0,"t":92.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Corporate Security & Policy","l":76.8,"t":21.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Risk & Internal Control","l":81.4,"t":17.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Law & Compliance","l":85.8,"t":28.0,"w":6.0,"h":5.0}]}}</script>
+<script id="appport-config" type="application/json">{"version":"V2.1 B32.70","app_name":"MPX Studio","subtitle":"EA PORTFOLIO","organization":"MPX","description":"Enterprise Application Portfolio Management","mpx2":{"_comment":"badge positions สำหรับ MPX 2 view — l=left%, t=top%, w=block-width%, h=block-height%","badges":[{"grp":"2. Services","cat":"Customer","l":0.0,"t":0.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Partner","l":0.0,"t":20.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Service","l":0.0,"t":40.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Employee","l":0.0,"t":60.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Channel","l":3.6,"t":29.0,"w":6.0,"h":5.0},{"grp":"2. Services","cat":"Portal & Gateway","l":8.1,"t":24.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"BOD","l":49.0,"t":0.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Vision, Mission, Strategies","l":57.5,"t":5.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Goals, Objectives","l":58.0,"t":11.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Governance Body","l":54.5,"t":17.0,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Standard & Policies","l":55.5,"t":22.5,"w":6.0,"h":5.0},{"grp":"1. Direction","cat":"Business Process & Services","l":58.5,"t":28.0,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Organization","l":47.5,"t":34.5,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Corporate & Core System","l":56.0,"t":43.5,"w":6.0,"h":5.0},{"grp":"3. Core Products","cat":"Back Office & Support System","l":57.0,"t":53.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Training & Communication","l":56.0,"t":63.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Corporate Information","l":54.0,"t":74.0,"w":6.0,"h":5.0},{"grp":"4. Support","cat":"Corporate Application & Information Technology","l":57.0,"t":83.7,"w":6.0,"h":5.0},{"grp":"","cat":"Enterprise Information Technology","l":63.0,"t":92.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Corporate Security & Policy","l":76.8,"t":21.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Risk & Internal Control","l":81.4,"t":17.0,"w":6.0,"h":5.0},{"grp":"5. Governance","cat":"Law & Compliance","l":85.8,"t":28.0,"w":6.0,"h":5.0}]}}</script>
 </head>
 <body>
 
@@ -3834,6 +3842,7 @@ body{
         <div class="aqv-app-sub" id="aqv-sub"></div>
       </div>
       <div class="aqv-header-actions">
+        <button class="aqv-edit-btn" id="aqv-edit-btn" style="display:none">✏️ Edit App</button>
         <button class="aqv-insight-btn" id="aqv-insight-btn">🔬 App Insight →</button>
         <button class="aqv-close-btn" onclick="closeAppQuickView()">✕</button>
       </div>
@@ -13099,6 +13108,16 @@ function openAppQuickView(id){
      <span style="color:var(--border2)">·</span>
      <span>${a.domain}</span>`;
 
+  // Edit App button — show for editor/admin only
+  const _aqvU = _authGetUser();
+  const _aqvCanEdit = (_aqvU?.roles||[]).some(r=>r==='editor'||r==='admin');
+  const editBtn = document.getElementById('aqv-edit-btn');
+  editBtn.style.display = _aqvCanEdit ? 'flex' : 'none';
+  editBtn.onclick = () => {
+    closeAppQuickView();
+    openEditModal(id);
+  };
+
   // App Insight button — switch view and close modal
   document.getElementById('aqv-insight-btn').onclick = () => {
     closeAppQuickView();
@@ -13744,6 +13763,8 @@ document.getElementById('modal-edit-submit').onclick = async ()=>{
       if(_sel) _sel.value = insightSelectedId;
       renderInsightReport(insightSelectedId);
     }
+    // ถ้า active view คือ EA Landscape → re-render landscape
+    if(_av === 'ea-landscape') renderEALandscape();
   } catch(e){
     showToast('❌ '+e.message, 'error');
   } finally {
