@@ -4864,14 +4864,16 @@ function _arbDecisionBadge(d){
 // ── helpers ──────────────────────────────────────────────────────────────────
 const REPO_TYPE_ICON = {
   Application:'📱', BusinessCapability:'💼', DataDomain:'🗄️',
-  TechnologyProduct:'⚙️', ABB:'🏗️', ArchitectureStandard:'📐',
-  Project:'📅', ARBDecision:'⚖️', Document:'📄'
+  TechnologyProduct:'⚙️', ABB:'🧱', ArchitectureStandard:'📐',
+  Project:'📅', ARBDecision:'⚖️', Document:'📄',
+  SecurityABB:'🧱', SecuritySBB:'🔧'
 };
 const REPO_TYPE_LABEL = {
   Application:'Application', BusinessCapability:'Business Capability',
   DataDomain:'Data Domain', TechnologyProduct:'Technology Product',
   ABB:'ABB / Pattern', ArchitectureStandard:'Architecture Standard',
-  Project:'Project', ARBDecision:'ARB Decision', Document:'Document'
+  Project:'Project', ARBDecision:'ARB Decision', Document:'Document',
+  SecurityABB:'Security ABB', SecuritySBB:'Security SBB'
 };
 const DOC_TYPE_ICON = {
   Policy:'🏛️', Procedure:'📋', Guideline:'💡', ADD:'🏗️',
@@ -4942,7 +4944,8 @@ async function renderRepoHome(){
       {key:'business_capabilities',icon:'💼', label:'Business Capabilities', view:'repo-catalog', q:'BusinessCapability'},
       {key:'data_domains',         icon:'🗄️', label:'Data Domains',          view:'repo-catalog', q:'DataDomain'},
       {key:'tech_products',        icon:'⚙️', label:'Tech Products',         view:'repo-catalog', q:'TechnologyProduct'},
-      {key:'abb',                  icon:'🏗️', label:'ABB Patterns',          view:'repo-patterns', q:''},
+      {key:'abb',                  icon:'🧱', label:'Security ABB',          view:'repo-patterns', q:''},
+      {key:'sbb',                  icon:'🔧', label:'Security SBB',          view:'repo-patterns', q:''},
       {key:'repo_standards',       icon:'📐', label:'Standards',             view:'repo-standards', q:''},
       {key:'projects',             icon:'📅', label:'Projects',              view:'repo-catalog', q:'Project'},
       {key:'arb_decisions',        icon:'⚖️', label:'ARB Decisions',         view:'repo-decisions', q:''},

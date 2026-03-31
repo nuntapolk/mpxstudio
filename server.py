@@ -6566,6 +6566,15 @@ def repo_home_recent(current_user: dict = Depends(_require_auth)):
         rows = c.execute("""SELECT 'Document' as type, id, title, status, updated_at
                             FROM ea_documents ORDER BY updated_at DESC LIMIT 5""").fetchall()
         results += [dict(r) for r in rows]
+    with get_esa_db() as c:
+        rows = c.execute("""SELECT 'SecurityABB' as type, id, name as title,
+                                   status, updated_at
+                            FROM abb ORDER BY updated_at DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
+        rows = c.execute("""SELECT 'SecuritySBB' as type, s.id, s.product_name as title,
+                                   s.status, s.updated_at
+                            FROM sbb s ORDER BY s.updated_at DESC LIMIT 5""").fetchall()
+        results += [dict(r) for r in rows]
     results.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
     return results[:20]
 
