@@ -6719,8 +6719,7 @@ def repo_object_links(obj_type: str, obj_id: str, current_user: dict = Depends(_
 
 # ── Relationships CRUD ────────────────────────────────────────────────────────
 @app.post("/api/repo/links", status_code=201)
-def repo_create_link(body: dict, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["editor","admin"])
+def repo_create_link(body: dict, current_user: dict = Depends(_require_writer)):
     now = _now()
     lid = "RL-" + uuid.uuid4().hex[:6].upper()
     actor = current_user.get('sub', current_user.get('username', ''))
@@ -6742,8 +6741,7 @@ def repo_create_link(body: dict, current_user: dict = Depends(_require_auth)):
 
 
 @app.delete("/api/repo/links/{link_id}", status_code=204)
-def repo_delete_link(link_id: str, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["editor","admin"])
+def repo_delete_link(link_id: str, current_user: dict = Depends(_require_writer)):
     actor = current_user.get('sub', current_user.get('username', ''))
     with get_ea_domains_db() as c:
         row = c.execute("SELECT * FROM repo_links WHERE id=?", (link_id,)).fetchone()
@@ -6775,8 +6773,7 @@ def repo_list_standards(
 
 
 @app.post("/api/repo/standards", status_code=201)
-def repo_create_standard(body: dict, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["editor","admin"])
+def repo_create_standard(body: dict, current_user: dict = Depends(_require_writer)):
     now = _now()
     actor = current_user.get('sub', current_user.get('username', ''))
     sid = "STD-" + uuid.uuid4().hex[:6].upper()
@@ -6805,8 +6802,7 @@ def repo_get_standard(std_id: str, current_user: dict = Depends(_require_auth)):
 
 
 @app.put("/api/repo/standards/{std_id}")
-def repo_update_standard(std_id: str, body: dict, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["editor","admin"])
+def repo_update_standard(std_id: str, body: dict, current_user: dict = Depends(_require_writer)):
     now = _now()
     actor = current_user.get('sub', current_user.get('username', ''))
     with get_ea_domains_db() as c:
@@ -6826,8 +6822,7 @@ def repo_update_standard(std_id: str, body: dict, current_user: dict = Depends(_
 
 
 @app.delete("/api/repo/standards/{std_id}", status_code=204)
-def repo_delete_standard(std_id: str, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["admin"])
+def repo_delete_standard(std_id: str, current_user: dict = Depends(_require_admin_role)):
     actor = current_user.get('sub', current_user.get('username', ''))
     with get_ea_domains_db() as c:
         if not c.execute("SELECT 1 FROM repo_standards WHERE id=?", (std_id,)).fetchone():
@@ -6919,12 +6914,13 @@ def repo_list_decisions(
 def repo_get_decision(arb_request_id: str, current_user: dict = Depends(_require_auth)):
     with get_db() as c:
         dec = c.execute("""SELECT d.*, COALESCE(q.title,'') as request_title,
-                                  q.request_type, q.objective, q.summary as request_summary
+                                  q.request_type, q.business_objective as objective,
+                                  q.change_summary as request_summary
                            FROM arb_decisions d LEFT JOIN arb_requests q ON q.id=d.arb_request_id
                            WHERE d.arb_request_id=?""", (arb_request_id,)).fetchone()
         if not dec: raise HTTPException(404)
         apps = c.execute("""SELECT a.id, a.name FROM arb_request_applications ra
-                            JOIN applications a ON a.id=ra.app_id
+                            JOIN applications a ON a.id=ra.application_id
                             WHERE ra.arb_request_id=?""", (arb_request_id,)).fetchall()
         actions = c.execute("SELECT * FROM arb_actions WHERE arb_request_id=?", (arb_request_id,)).fetchall()
     with get_ea_domains_db() as c:
@@ -7317,8 +7313,7 @@ def repo_list_documents(
 
 
 @app.post("/api/repo/documents", status_code=201)
-def repo_create_document(body: dict, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["editor", "admin"])
+def repo_create_document(body: dict, current_user: dict = Depends(_require_writer)):
     import uuid, datetime
     actor = current_user.get("sub", current_user.get("username", ""))
     now = datetime.datetime.utcnow().isoformat()
@@ -7382,8 +7377,7 @@ def repo_get_document(doc_id: str, current_user: dict = Depends(_require_auth)):
 
 
 @app.put("/api/repo/documents/{doc_id}")
-def repo_update_document(doc_id: str, body: dict, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["editor", "admin"])
+def repo_update_document(doc_id: str, body: dict, current_user: dict = Depends(_require_writer)):
     import datetime
     actor = current_user.get("sub", current_user.get("username", ""))
     now = datetime.datetime.utcnow().isoformat()
@@ -7418,8 +7412,7 @@ def repo_update_document(doc_id: str, body: dict, current_user: dict = Depends(_
 
 
 @app.delete("/api/repo/documents/{doc_id}", status_code=204)
-def repo_delete_document(doc_id: str, current_user: dict = Depends(_require_auth)):
-    _require_role(current_user, ["admin"])
+def repo_delete_document(doc_id: str, current_user: dict = Depends(_require_admin_role)):
     actor = current_user.get("sub", current_user.get("username", ""))
     with get_ea_domains_db() as c:
         if not c.execute("SELECT 1 FROM ea_documents WHERE id=?", (doc_id,)).fetchone():
