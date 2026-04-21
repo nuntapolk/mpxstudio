@@ -443,8 +443,21 @@ CREATE TABLE IF NOT EXISTS bcap_app_map (
     created_at    TEXT,
     updated_at    TEXT
 );
+CREATE TABLE IF NOT EXISTS bprocess_steps (
+    id              TEXT PRIMARY KEY,
+    bprocess_id     TEXT NOT NULL REFERENCES bprocess(id),
+    step_order      INTEGER NOT NULL DEFAULT 0,
+    step_name       TEXT NOT NULL,
+    step_type       TEXT DEFAULT 'Task',
+    app_id          TEXT,
+    condition_label TEXT,
+    description     TEXT,
+    created_at      TEXT,
+    updated_at      TEXT
+);
 CREATE INDEX IF NOT EXISTS idx_bprc_bcap ON bprocess(bcap_id);
 CREATE INDEX IF NOT EXISTS idx_bcap_map_app ON bcap_app_map(app_id);
+CREATE INDEX IF NOT EXISTS idx_bpstep_proc ON bprocess_steps(bprocess_id);
 
 -- ── EDA: Data Architecture ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS ddomain (
@@ -992,6 +1005,64 @@ _EBA_SEED_BPROCESS = [
     ("BPRC-118","BCAP-040","Board Meeting Management","Core","CG Code","การจัดการประชุมคณะกรรมการ"),
     ("BPRC-119","BCAP-040","Disclosure & Investor Relations","Core","SEC","การเปิดเผยข้อมูลต่อผู้ถือหุ้น"),
     ("BPRC-120","BCAP-040","Annual General Meeting","Support","CG Code","การจัดประชุมผู้ถือหุ้น"),
+]
+
+# id, bprocess_id, step_order, step_name, step_type, app_id, condition_label, description
+_EBA_SEED_BPROCESS_STEPS = [
+    # ── BPRC-004: KYC & Identity Verification (Customer Onboarding / BCAP-002) ──
+    ("BPS-001","BPRC-004",0,"Start","Start",None,None,"เริ่มกระบวนการ KYC"),
+    ("BPS-002","BPRC-004",1,"รับใบสมัครลูกค้า","Task","APP-010",None,"ลูกค้ากรอกข้อมูลและแนบเอกสารผ่าน Customer Portal"),
+    ("BPS-003","BPRC-004",2,"ตรวจสอบตัวตน (eKYC)","Task","APP-016",None,"ตรวจสอบ ID Card, Selfie, Biometric ผ่าน Identity Platform (Okta)"),
+    ("BPS-004","BPRC-004",3,"ข้อมูลครบถ้วน?","Decision",None,"เอกสารครบ / ไม่ครบ","ตรวจสอบความครบถ้วนของเอกสาร KYC"),
+    ("BPS-005","BPRC-004",4,"สร้าง Customer Account","Task","APP-002",None,"สร้าง Account ลูกค้าใน Salesforce CRM พร้อม KYC Status"),
+    ("BPS-006","BPRC-004",5,"ส่ง Welcome Notification","Task","APP-010",None,"แจ้งผลการสมัครและส่ง Welcome Package ผ่าน Customer Portal"),
+    ("BPS-007","BPRC-004",6,"End","End",None,None,"กระบวนการ KYC เสร็จสมบูรณ์"),
+
+    # ── BPRC-023: Billing & Invoicing (Revenue Management / BCAP-008) ──
+    ("BPS-010","BPRC-023",0,"Start","Start",None,None,"เริ่มออกใบแจ้งหนี้"),
+    ("BPS-011","BPRC-023",1,"สร้าง Sales Order","Task","APP-001",None,"สร้าง Sales Order และตรวจสอบข้อมูลใน SAP S/4HANA"),
+    ("BPS-012","BPRC-023",2,"มูลค่า > 1,000,000 บาท?","Decision",None,"ตรวจสอบวงเงิน","Invoice มูลค่าสูงต้องผ่าน Manager Approval"),
+    ("BPS-013","BPRC-023",3,"Manager อนุมัติ Billing","Task","APP-001",None,"Finance Manager อนุมัติผ่าน SAP Workflow"),
+    ("BPS-014","BPRC-023",4,"Post Invoice & บัญชี AR","Task","APP-001",None,"Post ใบแจ้งหนี้และบัญชีลูกหนี้การค้าใน SAP"),
+    ("BPS-015","BPRC-023",5,"ส่ง Invoice ให้ลูกค้า","Task","APP-010",None,"ส่งผ่าน Customer Portal และ Email อัตโนมัติ"),
+    ("BPS-016","BPRC-023",6,"End","End",None,None,"ออกใบแจ้งหนี้เสร็จสิ้น"),
+
+    # ── BPRC-049: Payroll Processing (Compensation & Benefits / BCAP-017) ──
+    ("BPS-020","BPRC-049",0,"Start","Start",None,None,"เริ่มประมวลผลเงินเดือนประจำเดือน"),
+    ("BPS-021","BPRC-049",1,"รวบรวมข้อมูลการเข้างาน","Task","APP-004",None,"ดึงข้อมูล Attendance, Leave, OT จาก Workday"),
+    ("BPS-022","BPRC-049",2,"คำนวณ Salary & ภาษีหัก ณ ที่จ่าย","Task","APP-004",None,"คำนวณ Gross/Net Salary และ Withholding Tax อัตโนมัติ"),
+    ("BPS-023","BPRC-049",3,"พบข้อผิดพลาด?","Decision",None,"Payroll QA Check","ตรวจสอบ Exception Report และ Discrepancy"),
+    ("BPS-024","BPRC-049",4,"HR Manager อนุมัติ Payroll","Task","APP-004",None,"HR Manager ตรวจสอบและอนุมัติ Payroll Run ใน Workday"),
+    ("BPS-025","BPRC-049",5,"Post บัญชีค่าใช้จ่ายพนักงาน","Task","APP-001",None,"บันทึก Journal Entry Payroll ใน SAP S/4HANA"),
+    ("BPS-026","BPRC-049",6,"โอนเงินเดือนเข้าธนาคาร","Task","APP-015",None,"สั่งโอนผ่าน Treasury System (FIS) ไปยังธนาคารพนักงาน"),
+    ("BPS-027","BPRC-049",7,"End","End",None,None,"Payroll เสร็จสมบูรณ์"),
+
+    # ── BPRC-007: Service Request Handling (Customer Service / BCAP-003) ──
+    ("BPS-030","BPRC-007",0,"Start","Start",None,None,"รับ Service Request จากลูกค้า"),
+    ("BPS-031","BPRC-007",1,"ลูกค้าแจ้งปัญหา","Task","APP-010",None,"ลูกค้าแจ้งผ่าน Customer Portal หรือ Call Center"),
+    ("BPS-032","BPRC-007",2,"สร้าง Ticket & จัดหมวดหมู่","Task","APP-017",None,"สร้างและ Categorize Ticket ใน ServiceNow อัตโนมัติ"),
+    ("BPS-033","BPRC-007",3,"อยู่ใน SLA Policy?","Decision",None,"ตรวจสอบ SLA Agreement","เปรียบเทียบประเภทปัญหากับ SLA Matrix"),
+    ("BPS-034","BPRC-007",4,"แก้ไขปัญหาและอัปเดต","Task","APP-017",None,"Agent แก้ไขและอัปเดตสถานะ Ticket ใน ServiceNow"),
+    ("BPS-035","BPRC-007",5,"อัปเดตประวัติลูกค้า","Task","APP-002",None,"บันทึกผลการแก้ไขใน Salesforce CRM Case History"),
+    ("BPS-036","BPRC-007",6,"ปิด Ticket & ส่ง Survey","Task","APP-017",None,"ปิด Ticket และส่ง CSAT Survey อัตโนมัติ"),
+    ("BPS-037","BPRC-007",7,"End","End",None,None,"Service Request เสร็จสิ้น"),
+
+    # ── BPRC-079: Architecture Review Board (EA Governance / BCAP-027) ──
+    ("BPS-040","BPRC-079",0,"Start","Start",None,None,"เริ่มกระบวนการ ARB Review"),
+    ("BPS-041","BPRC-079",1,"ยื่น ARB Request","Task","APP-017",None,"Project Team ยื่น ARB Request พร้อม Architecture Document ใน ServiceNow"),
+    ("BPS-042","BPRC-079",2,"เอกสารครบถ้วน?","Decision",None,"Completeness Check","EA Secretariat ตรวจสอบ Architecture Document ตาม Checklist"),
+    ("BPS-043","BPRC-079",3,"ARB Committee Review","Task","APP-017",None,"นำเสนอต่อคณะกรรมการ ARB ในการประชุมรายเดือน"),
+    ("BPS-044","BPRC-079",4,"ออก Architecture Decision Record","Task","APP-019",None,"บันทึก ADR และแจ้งผลการพิจารณาใน Document Management"),
+    ("BPS-045","BPRC-079",5,"End","End",None,None,"ARB Review เสร็จสมบูรณ์"),
+
+    # ── BPRC-031: Cash Flow Forecasting (Treasury / BCAP-011) ──
+    ("BPS-050","BPRC-031",0,"Start","Start",None,None,"เริ่มจัดทำ Cash Flow Forecast รายเดือน"),
+    ("BPS-051","BPRC-031",1,"ดึงข้อมูล AR & AP","Task","APP-001",None,"ดึงยอด Receivables และ Payables จาก SAP S/4HANA"),
+    ("BPS-052","BPRC-031",2,"วิเคราะห์ Cash Position","Task","APP-015",None,"วิเคราะห์ Cash Position และ Liquidity Gap ใน Treasury System"),
+    ("BPS-053","BPRC-031",3,"มี Cash Shortage?","Decision",None,"ตรวจสอบ Cash Gap","เปรียบเทียบกับ Minimum Cash Reserve Policy"),
+    ("BPS-054","BPRC-031",4,"จัดทำ Forecast Report","Task","APP-013",None,"สร้าง Cash Flow Forecast Dashboard ใน Power BI"),
+    ("BPS-055","BPRC-031",5,"CFO อนุมัติ Forecast","Task","APP-001",None,"CFO อนุมัติและ Lock Forecast ใน SAP"),
+    ("BPS-056","BPRC-031",6,"End","End",None,None,"Cash Flow Forecast เสร็จสมบูรณ์"),
 ]
 
 # ── EDA Seed ──────────────────────────────────────────────────────────────────
@@ -2082,6 +2153,12 @@ def init_ea_domains_db():
                 "INSERT INTO bprocess(id,bcap_id,name,type,framework,description,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
                 [(r[0],r[1],r[2],r[3],r[4],r[5],now,now) for r in _EBA_SEED_BPROCESS]
             )
+        if conn.execute("SELECT COUNT(*) FROM bprocess_steps").fetchone()[0] == 0:
+            conn.executemany(
+                "INSERT INTO bprocess_steps(id,bprocess_id,step_order,step_name,step_type,app_id,condition_label,description,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                [(r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],now,now) for r in _EBA_SEED_BPROCESS_STEPS]
+            )
+            print(f"  EBA process steps seeded: {len(_EBA_SEED_BPROCESS_STEPS)} steps across 6 processes")
         if conn.execute("SELECT COUNT(*) FROM bcap_app_map").fetchone()[0] == 0:
             try:
                 _ac = sqlite3.connect(DB_PATH)
@@ -4756,6 +4833,11 @@ class BCapMapWrite(BaseModel):
     bcap_id: str; app_id: str; bprocess_id: Optional[str]=None
     support_level: Optional[str]="None"; note: Optional[str]=None
 
+class BProcessStepWrite(BaseModel):
+    step_order: int=0; step_name: str; step_type: Optional[str]="Task"
+    app_id: Optional[str]=None; condition_label: Optional[str]=None
+    description: Optional[str]=None
+
 class DDomainWrite(BaseModel):
     domain: str; name: str; owner: Optional[str]=None
     description: Optional[str]=None; classification: Optional[str]="Internal"
@@ -5107,8 +5189,43 @@ def eba_update_bprocess(pid:str,body:BProcessWrite,current_user:dict=Depends(_re
 def eba_delete_bprocess(pid:str,current_user:dict=Depends(_require_writer)):
     with get_ea_domains_db() as conn:
         if not conn.execute("SELECT 1 FROM bprocess WHERE id=?",(pid,)).fetchone(): raise HTTPException(404)
+        conn.execute("DELETE FROM bprocess_steps WHERE bprocess_id=?",(pid,))
         conn.execute("DELETE FROM bprocess WHERE id=?",(pid,))
     return {"deleted":pid}
+
+@app.get("/api/eba/bprocess/{pid}/steps")
+def eba_list_steps(pid:str, current_user:dict=Depends(_require_auth)):
+    with get_connected_db() as conn:
+        rows=conn.execute("""SELECT s.*, a.name AS app_name
+                             FROM ead.bprocess_steps s LEFT JOIN main.applications a ON s.app_id=a.id
+                             WHERE s.bprocess_id=? ORDER BY s.step_order""", (pid,)).fetchall()
+        return [dict(r) for r in rows]
+
+@app.post("/api/eba/bprocess/{pid}/steps", status_code=201)
+def eba_create_step(pid:str, body:BProcessStepWrite, current_user:dict=Depends(_require_writer)):
+    now=datetime.utcnow().isoformat()
+    with get_ea_domains_db() as conn:
+        if not conn.execute("SELECT 1 FROM bprocess WHERE id=?",(pid,)).fetchone(): raise HTTPException(404)
+        nid="BPS-"+uuid.uuid4().hex[:6].upper()
+        conn.execute("INSERT INTO bprocess_steps(id,bprocess_id,step_order,step_name,step_type,app_id,condition_label,description,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                     (nid,pid,body.step_order,body.step_name,body.step_type,body.app_id,body.condition_label,body.description,now,now))
+    return {"id":nid}
+
+@app.put("/api/eba/bprocess/steps/{sid}")
+def eba_update_step(sid:str, body:BProcessStepWrite, current_user:dict=Depends(_require_writer)):
+    now=datetime.utcnow().isoformat()
+    with get_ea_domains_db() as conn:
+        if not conn.execute("SELECT 1 FROM bprocess_steps WHERE id=?",(sid,)).fetchone(): raise HTTPException(404)
+        conn.execute("UPDATE bprocess_steps SET step_order=?,step_name=?,step_type=?,app_id=?,condition_label=?,description=?,updated_at=? WHERE id=?",
+                     (body.step_order,body.step_name,body.step_type,body.app_id,body.condition_label,body.description,now,sid))
+    return {"id":sid}
+
+@app.delete("/api/eba/bprocess/steps/{sid}")
+def eba_delete_step(sid:str, current_user:dict=Depends(_require_writer)):
+    with get_ea_domains_db() as conn:
+        if not conn.execute("SELECT 1 FROM bprocess_steps WHERE id=?",(sid,)).fetchone(): raise HTTPException(404)
+        conn.execute("DELETE FROM bprocess_steps WHERE id=?",(sid,))
+    return {"deleted":sid}
 
 @app.get("/api/eba/coverage")
 def eba_list_coverage(app_id: Optional[str]=None, bcap_id: Optional[str]=None, current_user:dict=Depends(_require_auth)):
